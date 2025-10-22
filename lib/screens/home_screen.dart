@@ -1,3 +1,4 @@
+import 'package:connectedu_app/screens/club_list_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:connectedu_app/bloc/auth_bloc.dart';
@@ -372,7 +373,8 @@ class HomeScreen extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: <Widget>[
             _buildBottomNavItem(context, icon: Icons.home_filled, label: 'Home', isSelected: true, onTap: () {}), // Home is selected
-            _buildBottomNavItem(context, icon: Icons.explore_outlined, label: 'Explore', onTap: () {}),
+            _buildBottomNavItem(context, icon: Icons.explore_outlined, label: 'Explore', onTap: () {
+            Navigator.push(context, MaterialPageRoute(builder: (_) => ClubListScreen(currentUser : user)),); }),
             const SizedBox(width: 48), // The space for the FAB
             _buildBottomNavItem(context, icon: Icons.notifications_outlined, label: 'Notify', onTap: () {}),
             _buildBottomNavItem(context, icon: Icons.person_outline, label: 'Profile', onTap: () {}),

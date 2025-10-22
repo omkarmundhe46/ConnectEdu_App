@@ -22,5 +22,21 @@ class EventRepository {
       throw Exception('Failed to load upcoming events.');
     }
   }
+
+  // Calls GET /api/clubs/{clubId}/events via the Gateway
+  Future<List<Event>> getEventsByClub(int clubId) async {
+    try {
+      final response = await _apiService.dio.get('/api/clubs/$clubId/events');
+      final data = response.data as List;
+      return data.map((eventJson) => Event.fromJson(eventJson)).toList();
+    } on DioException catch (e) {
+      debugPrint('Failed to load events for club $clubId: ${e.response?.data ?? e.message}');
+      // Return empty list on error for counting purposes, prevents crash
+      return [];
+    } catch (e) {
+      debugPrint('Failed to load events for club $clubId: $e');
+      return []; // Return empty list on error
+    }
+  }
 }
 
