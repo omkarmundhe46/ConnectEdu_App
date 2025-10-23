@@ -1,24 +1,24 @@
-import 'package:connectedu_app/screens/club_list_screen.dart';
+import 'package:connectedu_app/screens/club_list_screen.dart'; // For "See All" Clubs navigation
+import 'package:connectedu_app/screens/event_list_screen.dart'; // For Club Card navigation
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:connectedu_app/bloc/auth_bloc.dart';
 import 'package:connectedu_app/bloc/home_bloc.dart';
 import 'package:connectedu_app/models/club.dart';
 import 'package:connectedu_app/models/event.dart';
 import 'package:connectedu_app/models/user.dart';
-// Removed unused AppColors import, assuming colors come from Theme
-import 'package:intl/intl.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:intl/intl.dart'; // Ensure this is imported
 
 class HomeScreen extends StatelessWidget {
   final User user;
   const HomeScreen({super.key, required this.user});
 
-  // Helper function to count events per club
-  Map<int, int> _countEventsPerClub(List<Event> events) {
+  // Helper function to count upcoming events per club
+  Map<int, int> _countUpcomingEventsPerClub(List<Event> events) {
     final Map<int, int> counts = {};
     for (var event in events) {
       // Ensure clubId is not null before using it
-      if (event.clubId != null) {
+      if (event.clubId != null && event.status == 'UPCOMING') { // Count only upcoming
         counts[event.clubId!] = (counts[event.clubId!] ?? 0) + 1;
       }
     }
@@ -81,8 +81,8 @@ class HomeScreen extends StatelessWidget {
             return const Center(child: CircularProgressIndicator());
           }
           if (state is HomeLoaded) {
-            // Calculate event counts for clubs
-            final eventCounts = _countEventsPerClub(state.upcomingEvents);
+            // Calculate upcoming event counts for clubs
+            final eventCounts = _countUpcomingEventsPerClub(state.upcomingEvents);
 
             return RefreshIndicator(
               onRefresh: () async => context.read<HomeBloc>().add(LoadHomeData()),
@@ -96,7 +96,10 @@ class HomeScreen extends StatelessWidget {
                   // Section 3: Clubs
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                    child: _buildSectionHeader(context, 'Clubs'),
+                    child: _buildSectionHeader(context, 'Clubs', () {
+                      // Navigate to ClubListScreen on "See All" tap
+                      Navigator.push(context, MaterialPageRoute(builder: (_) => ClubListScreen(currentUser: user)));
+                    }),
                   ),
                   const SizedBox(height: 12),
                   SizedBox(
@@ -111,7 +114,10 @@ class HomeScreen extends StatelessWidget {
                       itemBuilder: (context, index) {
                         final club = state.clubs[index];
                         final count = eventCounts[club.id] ?? 0;
-                        return _buildClubCard(context, club, count);
+                        // Navigate to EventListScreen when tapping a club card
+                        return _buildClubCard(context, club, count, () {
+                          Navigator.push(context, MaterialPageRoute(builder: (_) => EventListScreen(club: club, currentUser: user)));
+                        });
                       },
                     ),
                   ),
@@ -120,11 +126,14 @@ class HomeScreen extends StatelessWidget {
                   // Section 4: Upcoming Events
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                    child: _buildSectionHeader(context, 'Upcoming Events'),
+                    child: _buildSectionHeader(context, 'Upcoming Events', () {
+                      // TODO: Navigate to a screen showing ALL upcoming events
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Navigate to All Upcoming Events (Not Implemented)')));
+                    }),
                   ),
                   const SizedBox(height: 12),
                   SizedBox(
-                    height: 250, // Height for the horizontal list
+                    height: 250,
                     child: state.upcomingEvents.isEmpty
                         ? const Center(child: Padding(padding: EdgeInsets.symmetric(horizontal: 16.0), child: Text('No upcoming events found.')))
                         : ListView.builder(
@@ -133,18 +142,20 @@ class HomeScreen extends StatelessWidget {
                       itemCount: state.upcomingEvents.length,
                       itemBuilder: (context, index) {
                         final event = state.upcomingEvents[index];
-                        return _buildEventCard(context, event);
+                        return _buildEventCard(context, event, () {
+                          // TODO: Navigate to Event Details Screen
+                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Navigate to Event: ${event.name} (Not Implemented)')));
+                        });
                       },
                     ),
                   ),
-                  const SizedBox(height: 80), // Padding at the bottom for FAB clearance
+                  const SizedBox(height: 80), // Padding at the bottom
                 ],
               ),
             );
           }
           if (state is HomeError) {
-            // Error display widget
-            return Center(
+            return Center( // Error UI with Retry Button
               child: Padding(
                 padding: const EdgeInsets.all(20.0),
                 child: Column(
@@ -177,7 +188,6 @@ class HomeScreen extends StatelessWidget {
           return const SizedBox.shrink(); // Default empty state
         },
       ),
-      // Updated Floating Action Button visibility and action
       floatingActionButton: showFab ? FloatingActionButton(
         onPressed: () {
           if (user.role == 'COLLEGE_ADMIN') {
@@ -193,13 +203,13 @@ class HomeScreen extends StatelessWidget {
         shape: const CircleBorder(),
         tooltip: user.role == 'COLLEGE_ADMIN' ? 'Create Club' : 'Create Event',
         child: const Icon(Icons.add),
-      ) : null, // Hide FAB if not admin
+      ) : null,
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-      bottomNavigationBar: _buildBottomNavBar(context), // Use updated Bottom Nav Bar
+      bottomNavigationBar: _buildBottomNavBar(context),
     );
   }
 
-  // --- WIDGETS based on sketch ---
+  // --- WIDGET BUILDER METHODS ---
 
   Widget _buildAppDrawer(BuildContext context) {
     // Basic Drawer implementation
@@ -213,26 +223,28 @@ class HomeScreen extends StatelessWidget {
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.end, // Align content to bottom
               children: [
                 Text(
                   'ConnectEdu',
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 24,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
                 const SizedBox(height: 8),
                 Text(
                   user.name, // Display user name
                   style: TextStyle(
-                    color: Colors.white.withOpacity(0.8),
+                    color: Colors.white.withOpacity(0.9),
                     fontSize: 16,
                   ),
                 ),
                 Text(
                   user.email, // Display user email
                   style: TextStyle(
-                    color: Colors.white.withOpacity(0.6),
+                    color: Colors.white.withOpacity(0.7),
                     fontSize: 14,
                   ),
                 ),
@@ -248,10 +260,10 @@ class HomeScreen extends StatelessWidget {
           ),
           ListTile(
             leading: const Icon(Icons.explore_outlined),
-            title: const Text('Explore'),
+            title: const Text('Clubs'), // Changed label
             onTap: () {
-              // TODO: Navigate to Explore Screen
-              Navigator.pop(context);
+              Navigator.pop(context); // Close drawer first
+              Navigator.push(context, MaterialPageRoute(builder: (_) => ClubListScreen(currentUser: user)));
             },
           ),
           ListTile(
@@ -260,6 +272,7 @@ class HomeScreen extends StatelessWidget {
             onTap: () {
               // TODO: Navigate to Notifications Screen
               Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Navigate to Notifications (Not Implemented)')));
             },
           ),
           ListTile(
@@ -268,12 +281,13 @@ class HomeScreen extends StatelessWidget {
             onTap: () {
               // TODO: Navigate to Profile Screen
               Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Navigate to Profile (Not Implemented)')));
             },
           ),
           const Divider(),
           ListTile(
-            leading: const Icon(Icons.logout),
-            title: const Text('Logout'),
+            leading: const Icon(Icons.logout, color: Colors.redAccent),
+            title: const Text('Logout', style: TextStyle(color: Colors.redAccent)),
             onTap: () {
               Navigator.pop(context); // Close drawer first
               context.read<AuthBloc>().add(LoggedOut());
@@ -293,23 +307,29 @@ class HomeScreen extends StatelessWidget {
       _buildBannerCard(context, 'Upcoming Workshop Ads', Colors.orangeAccent.withOpacity(0.7)),
     ];
 
+    // Added Auto-scroll functionality (Optional)
+    final PageController _pageController = PageController(viewportFraction: 0.9, initialPage: 1000); // Start far for infinite feel
+    // You could use a Timer here to auto-scroll if desired
+
     return SizedBox(
       height: 150,
       child: PageView.builder(
-        controller: PageController(viewportFraction: 0.9),
-        itemCount: banners.length,
-        itemBuilder: (context, index) => banners[index],
+        controller: _pageController,
+        // itemCount: null, // For infinite scroll (requires more logic)
+        itemCount: banners.length * 2000, // Simulate infinite scroll
+        itemBuilder: (context, index) => banners[index % banners.length], // Loop through banners
       ),
     );
   }
 
   Widget _buildBannerCard(BuildContext context, String text, Color color) {
+    // Banner card UI
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 8),
       color: color,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       elevation: 4,
-      child: Container( // Add container for potential background image later
+      child: Container(
         padding: const EdgeInsets.all(16),
         child: Center(
           child: Text(
@@ -324,9 +344,10 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildClubCard(BuildContext context, Club club, int eventCount) {
+  Widget _buildClubCard(BuildContext context, Club club, int eventCount, VoidCallback onTap) {
+    // Club card UI
     return InkWell(
-      onTap: () { /* TODO: Navigate to Club Details Screen */ },
+      onTap: onTap,
       borderRadius: BorderRadius.circular(16),
       child: Container(
         width: 150,
@@ -340,65 +361,28 @@ class HomeScreen extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            CircleAvatar( // Placeholder Logo
+            CircleAvatar(
               radius: 20,
               backgroundColor: Theme.of(context).colorScheme.primaryContainer,
-              // Use club-appropriate icons based on name (simple example)
               child: Icon(
                   club.name.toLowerCase().contains('code') || club.name.toLowerCase().contains('tech') ? Icons.code
                       : club.name.toLowerCase().contains('sport') ? Icons.sports_basketball
                       : club.name.toLowerCase().contains('music') ? Icons.music_note
-                      : Icons.groups, // Default icon
+                      : Icons.groups,
                   color: Theme.of(context).colorScheme.onPrimaryContainer
               ),
             ),
             const Spacer(),
             Text(club.name, style: const TextStyle(fontWeight: FontWeight.bold), maxLines: 1, overflow: TextOverflow.ellipsis),
-            Text('$eventCount Event${eventCount != 1 ? 's' : ''}', style: TextStyle(fontSize: 12, color: Theme.of(context).hintColor)),
+            Text('$eventCount Upcoming Event${eventCount != 1 ? 's' : ''}', style: TextStyle(fontSize: 12, color: Theme.of(context).hintColor)),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildBottomNavBar(BuildContext context) {
-    // Updated BottomAppBar matching the sketch
-    return BottomAppBar(
-      shape: const CircularNotchedRectangle(),
-      notchMargin: 8.0,
-      clipBehavior: Clip.antiAlias,
-      child: SizedBox(
-        height: 65.0, // Slightly taller for better touch targets
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: <Widget>[
-            _buildBottomNavItem(context, icon: Icons.home_filled, label: 'Home', isSelected: true, onTap: () {}), // Home is selected
-            _buildBottomNavItem(context, icon: Icons.explore_outlined, label: 'Explore', onTap: () {
-            Navigator.push(context, MaterialPageRoute(builder: (_) => ClubListScreen(currentUser : user)),); }),
-            const SizedBox(width: 48), // The space for the FAB
-            _buildBottomNavItem(context, icon: Icons.notifications_outlined, label: 'Notify', onTap: () {}),
-            _buildBottomNavItem(context, icon: Icons.person_outline, label: 'Profile', onTap: () {}),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // --- UNCHANGED OR SLIGHTLY MODIFIED HELPERS ---
-  Widget _buildSectionHeader(BuildContext context, String title) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-        TextButton(
-          onPressed: () {}, // TODO: Implement "See All" navigation
-          child: Text('See All', style: TextStyle(color: Theme.of(context).primaryColor, fontWeight: FontWeight.bold)),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildEventCard(BuildContext context, Event event) {
+  Widget _buildEventCard(BuildContext context, Event event, VoidCallback onTap) {
+    // Event card UI
     return Container(
       width: 220,
       margin: const EdgeInsets.only(right: 16),
@@ -407,11 +391,8 @@ class HomeScreen extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4))],
       ),
-      child: InkWell( // Make card tappable
-        onTap: () {
-          // TODO: Navigate to Event Details Screen
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Navigate to Event: ${event.name} (Not Implemented)')));
-        },
+      child: InkWell(
+        onTap: onTap,
         borderRadius: BorderRadius.circular(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -420,32 +401,19 @@ class HomeScreen extends StatelessWidget {
               children: [
                 ClipRRect(
                   borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
-                  // --- THIS IS THE CHANGE ---
-                  // Use Image.network with the actual URL, provide a placeholder on error
                   child: event.imageUrl != null && event.imageUrl!.isNotEmpty
                       ? Image.network(
                     event.imageUrl!,
                     height: 120,
                     width: double.infinity,
                     fit: BoxFit.cover,
-                    // Loading indicator while image loads
                     loadingBuilder: (context, child, loadingProgress) {
                       if (loadingProgress == null) return child;
-                      return Container(
-                        height: 120,
-                        color: Colors.grey[300],
-                        child: Center(
-                          child: CircularProgressIndicator(
-                            value: loadingProgress.expectedTotalBytes != null
-                                ? loadingProgress.cumulativeBytesLoaded / loadingProgress.expectedTotalBytes!
-                                : null,
-                          ),
-                        ),
-                      );
+                      return Container( height: 120, color: Colors.grey[300], child: const Center(child: CircularProgressIndicator()));
                     },
                     errorBuilder: (context, error, stackTrace) => _buildPlaceholderImage(context, event.name),
                   )
-                      : _buildPlaceholderImage(context, event.name), // Show placeholder if no URL
+                      : _buildPlaceholderImage(context, event.name),
                 ),
                 Positioned(
                   top: 8,
@@ -492,9 +460,10 @@ class HomeScreen extends StatelessWidget {
   }
 
   // Helper for placeholder image
-  Widget _buildPlaceholderImage(BuildContext context, String eventName) {
+  Widget _buildPlaceholderImage(BuildContext context, String eventName, {double height = 120.0}) {
     return Container(
-      height: 120,
+      height: height,
+      width: double.infinity,
       color: Theme.of(context).colorScheme.secondaryContainer.withOpacity(0.5),
       child: Center(
           child: Text(
@@ -506,21 +475,50 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
+  Widget _buildSectionHeader(BuildContext context, String title, VoidCallback onSeeAllTap) {
+    // Section Header UI
+    return Row( /* ... */ );
+  }
+
+  Widget _buildBottomNavBar(BuildContext context) {
+    // Updated BottomAppBar matching the sketch
+    return BottomAppBar(
+      shape: const CircularNotchedRectangle(),
+      notchMargin: 8.0,
+      clipBehavior: Clip.antiAlias,
+      child: SizedBox(
+        height: 65.0,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: <Widget>[
+            _buildBottomNavItem(context, icon: Icons.home_filled, label: 'Home', isSelected: true, onTap: () {}),
+            _buildBottomNavItem(context, icon: Icons.explore_outlined, label: 'Clubs', onTap: () { // Updated label
+              Navigator.push(context, MaterialPageRoute(builder: (_) => ClubListScreen(currentUser: user)));
+            }),
+            const SizedBox(width: 48), // Space for FAB
+            _buildBottomNavItem(context, icon: Icons.notifications_outlined, label: 'Notify', onTap: () {}),
+            _buildBottomNavItem(context, icon: Icons.person_outline, label: 'Profile', onTap: () {}),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildBottomNavItem(BuildContext context, {required IconData icon, required String label, bool isSelected = false, required VoidCallback onTap}) {
-    final color = isSelected ? Theme.of(context).colorScheme.primary : Theme.of(context).unselectedWidgetColor;
-    return Expanded( // Make items expand equally
+    // Bottom Nav Item UI
+    return Expanded(
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(30),
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 6.0), // Adjust padding
+          padding: const EdgeInsets.symmetric(vertical: 6.0),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon, color: color, size: 26), // Slightly larger icon
+              Icon(icon, color: isSelected ? Theme.of(context).colorScheme.primary : Theme.of(context).unselectedWidgetColor, size: 26),
               const SizedBox(height: 3),
-              Text(label, style: TextStyle(color: color, fontSize: 10, fontWeight: isSelected ? FontWeight.bold : FontWeight.normal)), // Highlight selected
+              Text(label, style: TextStyle(color: isSelected ? Theme.of(context).colorScheme.primary : Theme.of(context).unselectedWidgetColor, fontSize: 10, fontWeight: isSelected ? FontWeight.bold : FontWeight.normal)),
             ],
           ),
         ),

@@ -1,3 +1,4 @@
+import 'package:connectedu_app/screens/event_list_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:connectedu_app/bloc/club_list_bloc.dart';
@@ -131,10 +132,7 @@ class ClubListScreen extends StatelessWidget {
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
         onTap: () {
-          // TODO: Navigate to Event List Screen for this club
-          // Navigator.push(context, MaterialPageRoute(builder: (_) => EventListScreen(club: club)));
-          ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Navigate to events for ${club.name} (Not Implemented)')));
+          Navigator.push(context, MaterialPageRoute(builder: (_) => EventListScreen(club: club, currentUser: currentUser)));
         },
         child: Padding(
           padding: const EdgeInsets.all(16.0),
