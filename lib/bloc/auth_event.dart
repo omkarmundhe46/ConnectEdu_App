@@ -8,6 +8,7 @@ abstract class AuthEvent extends Equatable {
 
 class AppStarted extends AuthEvent {}
 
+// This is the correct event dispatched from the login screen
 class LoggedIn extends AuthEvent {
   final String email;
   final String password;

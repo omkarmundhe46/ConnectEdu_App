@@ -1,10 +1,12 @@
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:bloc/bloc.dart';
 import 'package:equatable/equatable.dart';
-import 'package:connectedu_app/models/user.dart';
 import 'package:connectedu_app/repositories/auth_repository.dart';
+import 'package:flutter/foundation.dart';
 
-import '../models/user.dart';
+// Correct package import for User model
+import 'package:connectedu_app/models/user.dart';
 
+// Correctly link the part files
 part 'auth_event.dart';
 part 'auth_state.dart';
 
@@ -17,13 +19,19 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<LoggedOut>(_onLoggedOut);
   }
 
-  void _onAppStarted(AppStarted event, Emitter<AuthState> emit) async {
-    final hasToken = await authRepository.hasToken();
+  // This handler checks for an existing token on app start
+  Future<void> _onAppStarted(AppStarted event, Emitter<AuthState> emit) async {
+    final bool hasToken = await authRepository.hasToken();
     if (hasToken) {
-      final user = await authRepository.getUserFromToken();
-      if (user != null) {
-        emit(AuthAuthenticated(user: user));
-      } else {
+      try {
+        final user = await authRepository.getUserFromToken();
+        if (user != null) {
+          emit(AuthAuthenticated(user: user));
+        } else {
+          emit(AuthUnauthenticated());
+        }
+      } catch (e) {
+        debugPrint('AppStarted Error: $e');
         emit(AuthUnauthenticated());
       }
     } else {
@@ -31,23 +39,23 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     }
   }
 
+  // This handler processes the login attempt from the login screen
   void _onLoggedIn(LoggedIn event, Emitter<AuthState> emit) async {
     emit(AuthLoading());
     try {
-      await authRepository.login(event.email, event.password);
-      final user = await authRepository.getUserFromToken();
-      if (user != null) {
-        emit(AuthAuthenticated(user: user));
-      } else {
-        emit(AuthFailure(error: "Could not retrieve user details from token."));
-      }
+      // Call the repository with email and password
+      final user = await authRepository.login(event.email, event.password);
+      // Emit Authenticated on success
+      emit(AuthAuthenticated(user: user));
     } catch (e) {
-      emit(AuthFailure(error: "Login failed. Please check your credentials."));
+      debugPrint('Login Error: $e');
+      emit(AuthFailure(error: e.toString().replaceFirst('Exception: ', '')));
     }
   }
 
+  // This handler processes the logout action
   void _onLoggedOut(LoggedOut event, Emitter<AuthState> emit) async {
-    emit(AuthLoading());
+    emit(AuthLoading()); // Show loading while logging out
     await authRepository.logout();
     emit(AuthUnauthenticated());
   }
