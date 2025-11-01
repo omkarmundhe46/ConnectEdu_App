@@ -1,24 +1,29 @@
-import 'package:connectedu_app/bloc/club_list_bloc.dart';
-import 'package:connectedu_app/repositories/club_repository.dart';
-import 'package:connectedu_app/repositories/event_repository.dart';
-import 'package:connectedu_app/screens/club_edit_screen.dart';
-import 'package:connectedu_app/screens/club_list_screen.dart';
-import 'package:connectedu_app/screens/event_list_screen.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
+
+
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:connectedu_app/bloc/auth_bloc.dart';
+import 'package:connectedu_app/bloc/club_list_bloc.dart';
+import 'package:connectedu_app/bloc/event_list_bloc.dart';
 import 'package:connectedu_app/bloc/home_bloc.dart';
 import 'package:connectedu_app/models/club.dart';
 import 'package:connectedu_app/models/event.dart';
 import 'package:connectedu_app/models/user.dart';
+import 'package:connectedu_app/repositories/club_repository.dart';
+import 'package:connectedu_app/repositories/event_repository.dart';
+import 'package:connectedu_app/screens/club_edit_screen.dart';
+import 'package:connectedu_app/screens/club_list_screen.dart';
+import 'package:connectedu_app/screens/event_details_screen.dart';
+import 'package:connectedu_app/screens/event_edit_screen.dart';
+import 'package:connectedu_app/screens/event_list_screen.dart';
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
-import 'package:cached_network_image/cached_network_image.dart'; // Import this
 
 class HomeScreen extends StatelessWidget {
   final User user;
   const HomeScreen({super.key, required this.user});
 
-  // Helper function to count upcoming events per club
   Map<int, int> _countUpcomingEventsPerClub(List<Event> events) {
     final Map<int, int> counts = {};
     for (var event in events) {
@@ -28,7 +33,6 @@ class HomeScreen extends StatelessWidget {
     }
     return counts;
   }
-
 
   @override
   Widget build(BuildContext context) {
@@ -109,7 +113,7 @@ class HomeScreen extends StatelessWidget {
                       itemBuilder: (context, index) {
                         final club = state.clubs[index];
                         final count = eventCounts[club.id] ?? 0;
-                        return _buildClubCard(context, club, count, () { // onTap navigates to EventListScreen
+                        return _buildClubCard(context, club, count, () {
                           Navigator.push(context, MaterialPageRoute(builder: (_) => EventListScreen(club: club, currentUser: user)));
                         });
                       },
@@ -133,8 +137,21 @@ class HomeScreen extends StatelessWidget {
                       itemCount: state.upcomingEvents.length,
                       itemBuilder: (context, index) {
                         final event = state.upcomingEvents[index];
+                        final club = state.clubs.firstWhere(
+                              (c) => c.id == event.clubId,
+                          orElse: () => Club(id: event.clubId ?? 0, name: "Unknown Club", description: "", adminId: 0, logoUrl: null),
+                        );
                         return _buildEventCard(context, event, () {
-                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Navigate to Event: ${event.name} (Not Implemented)')));
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => EventDetailsScreen(
+                                club: club,
+                                event: event,
+                                currentUser: user,
+                              ),
+                            ),
+                          );
                         });
                       },
                     ),
@@ -145,7 +162,7 @@ class HomeScreen extends StatelessWidget {
             );
           }
           if (state is HomeError) {
-            return Center( // Error UI with Retry Button
+            return Center(
               child: Padding(
                 padding: const EdgeInsets.all(20.0),
                 child: Column(
@@ -179,10 +196,8 @@ class HomeScreen extends StatelessWidget {
         },
       ),
       floatingActionButton: showFab ? FloatingActionButton(
-        onPressed: () async { // Make the function async
+        onPressed: () async {
           if (user.role == 'COLLEGE_ADMIN') {
-            // 1. Navigate to the ClubEditScreen and provide a new, temporary
-            //    ClubListBloc for it to use.
             final result = await Navigator.push(
               context,
               MaterialPageRoute(
@@ -191,26 +206,56 @@ class HomeScreen extends StatelessWidget {
                     clubRepository: context.read<ClubRepository>(),
                     eventRepository: context.read<EventRepository>(),
                   ),
-                  child: const ClubEditScreen(), // Create mode
+                  child: const ClubEditScreen(),
                 ),
               ),
             );
-
-            // 2. When we return, if the result is 'true' (meaning success),
-            //    refresh the HomeScreen's data.
             if (result == true && context.mounted) {
               context.read<HomeBloc>().add(LoadHomeData());
             }
 
           } else if (user.role == 'CLUB_ADMIN') {
-            // TODO: Navigate to Create Event Screen (pass managedClubId)
-            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Navigate to Create Event (Not Implemented)')));
+            final homeState = context.read<HomeBloc>().state;
+            Club? managedClub;
+            if (homeState is HomeLoaded && user.managedClubId != null) {
+              try {
+                managedClub = homeState.clubs.firstWhere((c) => c.id == user.managedClubId);
+              } catch (e) {
+                debugPrint("Managed club not found in HomeBloc state");
+              }
+            }
+
+            // --- THIS IS THE FIX ---
+            // Add a null check before navigating
+            if (managedClub != null && context.mounted) {
+              final Club club = managedClub; // promoted via the preceding null-check and assigned to non-nullable local
+              final result = await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => BlocProvider(
+                    create: (ctx) => EventListBloc(
+                      eventRepository: context.read<EventRepository>(),
+                    ),
+                    child: EventEditScreen(club: club),
+                  ),
+                ),
+              );
+
+            if (result == true && context.mounted) {
+                context.read<HomeBloc>().add(LoadHomeData());
+              }
+            } else if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Could not find your managed club to create an event.'), backgroundColor: Colors.orange)
+              );
+            }
+            // --- END OF FIX ---
           }
         },
         backgroundColor: Theme.of(context).colorScheme.primary,
         foregroundColor: Theme.of(context).colorScheme.onPrimary,
         shape: const CircleBorder(),
-        tooltip: user.role == 'COLLEGE_ADMIN' ? 'Create Clubs' : 'Create Event', // Updated tooltip
+        tooltip: user.role == 'COLLEGE_ADMIN' ? 'Create Club' : 'Create Event',
         child: const Icon(Icons.add),
       ) : null,
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
@@ -310,7 +355,6 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  // --- (THIS IS THE PRIMARY UPDATE) ---
   Widget _buildClubCard(BuildContext context, Club club, int eventCount, VoidCallback onTap) {
     return InkWell(
       onTap: onTap,
@@ -327,7 +371,6 @@ class HomeScreen extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Use CachedNetworkImage to load the logoUrl
             CircleAvatar(
               radius: 20,
               backgroundColor: Theme.of(context).colorScheme.secondaryContainer.withOpacity(0.5),
@@ -336,16 +379,16 @@ class HomeScreen extends StatelessWidget {
                 child: CachedNetworkImage(
                   imageUrl: club.logoUrl!,
                   fit: BoxFit.cover,
-                  width: 40, // Diameter of the CircleAvatar
+                  width: 40,
                   height: 40,
                   placeholder: (context, url) => const Center(child: CircularProgressIndicator(strokeWidth: 2.0)),
                   errorWidget: (context, url, error) {
                     debugPrint("Error loading club logo ${club.name}: $error");
-                    return _buildPlaceholderIcon(context, club.name); // Fallback icon
+                    return _buildPlaceholderIcon(context, club.name);
                   },
                 ),
               )
-                  : _buildPlaceholderIcon(context, club.name), // Default icon if no logoUrl
+                  : _buildPlaceholderIcon(context, club.name),
             ),
             const Spacer(),
             Text(club.name, style: const TextStyle(fontWeight: FontWeight.bold), maxLines: 1, overflow: TextOverflow.ellipsis),
@@ -355,11 +398,9 @@ class HomeScreen extends StatelessWidget {
       ),
     );
   }
-  // --- (END OF UPDATE) ---
 
-  // --- (HELPER WIDGET FOR LOGO FALLBACK) ---
   Widget _buildPlaceholderIcon(BuildContext context, String clubName) {
-    IconData iconData = Icons.groups; // Default
+    IconData iconData = Icons.groups;
     if (clubName.toLowerCase().contains('code') || clubName.toLowerCase().contains('tech')) {
       iconData = Icons.code;
     } else if (clubName.toLowerCase().contains('sport')) {
@@ -369,11 +410,10 @@ class HomeScreen extends StatelessWidget {
     }
     return Icon(
       iconData,
-      size: 20, // Smaller icon for the 20 radius avatar
+      size: 20,
       color: Theme.of(context).colorScheme.onSecondaryContainer.withOpacity(0.7),
     );
   }
-  // --- (END OF HELPER) ---
 
   Widget _buildBottomNavBar(BuildContext context) {
     return BottomAppBar(
@@ -398,13 +438,13 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildSectionHeader(BuildContext context, String title, VoidCallback onSeeAllTap) {
+  Widget _buildSectionHeader(BuildContext context, String title, VoidCallback onTap) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
         TextButton(
-          onPressed: onSeeAllTap,
+          onPressed: onTap,
           child: Text('See All', style: TextStyle(color: Theme.of(context).primaryColor, fontWeight: FontWeight.bold)),
         ),
       ],
@@ -488,7 +528,6 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  // Helper for placeholder image, updated to handle different heights
   Widget _buildPlaceholderImage(BuildContext context, String eventName, {double height = 120.0}) {
     return Container(
       height: height,
@@ -525,4 +564,3 @@ class HomeScreen extends StatelessWidget {
     );
   }
 }
-

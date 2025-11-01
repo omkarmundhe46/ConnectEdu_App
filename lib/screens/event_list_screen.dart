@@ -1,14 +1,17 @@
-import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:connectedu_app/bloc/event_list_bloc.dart';
 import 'package:connectedu_app/models/club.dart';
 import 'package:connectedu_app/models/event.dart';
 import 'package:connectedu_app/models/user.dart';
 import 'package:connectedu_app/repositories/event_repository.dart';
+import 'package:connectedu_app/screens/event_details_screen.dart';
+import 'package:connectedu_app/screens/event_edit_screen.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 // Enum for Admin actions
-enum EventAdminAction { create, update, delete }
+enum EventAdminAction { update, delete }
 
 class EventListScreen extends StatelessWidget {
   final Club club;
@@ -16,67 +19,84 @@ class EventListScreen extends StatelessWidget {
 
   const EventListScreen({super.key, required this.club, required this.currentUser});
 
-  // Helper to determine if the current user is an authorized admin for THIS club
-  bool _isAuthorizedAdmin() {
-    return currentUser.role == 'COLLEGE_ADMIN' ||
-        (currentUser.role == 'CLUB_ADMIN' && currentUser.managedClubId == club.id);
+  // --- CORRECTED LOGIC: Only the Club Admin for THIS club is an admin ---
+  bool _isClubAdminForThisClub() {
+    return currentUser.role == 'CLUB_ADMIN' && currentUser.managedClubId == club.id;
+  }
+  // --- END OF CORRECTION ---
+
+  // Helper for Delete Confirmation Dialog
+  Future<bool> _showDeleteConfirmationDialog(BuildContext context, Event event) async {
+    return await showDialog<bool>(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          title: const Text('Confirm Deletion'),
+          content: Text('Are you sure you want to delete the event "${event.name}"? This action cannot be undone.'),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('Cancel'),
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+            ),
+            TextButton(
+              style: TextButton.styleFrom(foregroundColor: Colors.red),
+              child: const Text('Delete'),
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+            ),
+          ],
+        );
+      },
+    ) ?? false;
   }
 
   @override
   Widget build(BuildContext context) {
+    // Use the corrected helper method
+    final bool isAuthorizedAdmin = _isClubAdminForThisClub();
+
     return BlocProvider(
       create: (context) => EventListBloc(
         eventRepository: context.read<EventRepository>(),
-      )..add(LoadEvents(club.id)), // Load events for this specific club
+      )..add(LoadEvents(club.id)),
       child: Scaffold(
         appBar: AppBar(
-          title: Text(club.name), // Show club name as title
+          title: Text(club.name),
           actions: [
-            // --- Conditional Admin Menu ---
-            if (_isAuthorizedAdmin())
-              PopupMenuButton<EventAdminAction>(
-                icon: const Icon(Icons.more_vert),
-                onSelected: (EventAdminAction result) {
-                  switch (result) {
-                    case EventAdminAction.create:
-                    // TODO: Navigate to Create Event Screen
-                      ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Navigate to Create Event (Not Implemented)')));
-                      break;
-                  // Update/Delete require selecting an event first,
-                  // usually done via a long-press or icon on the event card itself.
-                    case EventAdminAction.update:
-                      ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Update Event action (Not Implemented - select an event)')));
-                      break;
-                    case EventAdminAction.delete:
-                      ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(content: Text('Delete Event action (Not Implemented - select an event)')));
-                      break;
+            // --- CORRECTED LOGIC: Button is only visible to the correct admin ---
+            if (isAuthorizedAdmin)
+              Builder(
+                  builder: (buttonContext) {
+                    return IconButton(
+                      icon: const Icon(Icons.add_circle_outline),
+                      tooltip: 'Create New Event',
+                      onPressed: () async {
+                        final result = await Navigator.push(
+                          buttonContext,
+                          MaterialPageRoute(
+                            builder: (_) => BlocProvider.value(
+                              value: buttonContext.read<EventListBloc>(),
+                              child: EventEditScreen(club: club), // Pass club, event is null (Create mode)
+                            ),
+                          ),
+                        );
+                        if (result == true && buttonContext.mounted) {
+                          buttonContext.read<EventListBloc>().add(LoadEvents(club.id));
+                        }
+                      },
+                    );
                   }
-                },
-                itemBuilder: (BuildContext context) => <PopupMenuEntry<EventAdminAction>>[
-                  const PopupMenuItem<EventAdminAction>(
-                    value: EventAdminAction.create,
-                    child: ListTile(leading: Icon(Icons.add_circle_outline), title: Text('Create Event')),
-                  ),
-                  const PopupMenuItem<EventAdminAction>(
-                    value: EventAdminAction.update,
-                    child: ListTile(leading: Icon(Icons.edit_outlined), title: Text('Update Event')),
-                  ),
-                  const PopupMenuItem<EventAdminAction>(
-                    value: EventAdminAction.delete,
-                    child: ListTile(leading: Icon(Icons.delete_outline), title: Text('Delete Event')),
-                  ),
-                ],
               ),
           ],
         ),
         body: BlocConsumer<EventListBloc, EventListState>(
           listener: (context, state) {
-            if (state is EventListError) {
+            if (state is EventActionSuccess) {
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text('Error: ${state.message}'), backgroundColor: Colors.redAccent),
+                SnackBar(content: Text(state.message), backgroundColor: Colors.green),
+              );
+            } else if (state is EventActionFailure) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Error: ${state.error}'), backgroundColor: Colors.red),
               );
             }
           },
@@ -84,47 +104,62 @@ class EventListScreen extends StatelessWidget {
             if (state is EventListLoading) {
               return const Center(child: CircularProgressIndicator());
             }
+
+            EventListLoaded? loadedState;
+            bool isLoadingOverlay = false;
             if (state is EventListLoaded) {
-              return Column( // Use Column to hold filters and list
+              loadedState = state;
+            } else if (state is EventActionInProgress) {
+              loadedState = state.previousState;
+              isLoadingOverlay = true;
+            }
+
+            if (loadedState != null) {
+              return Stack(
                 children: [
-                  // --- Filter Chips ---
-                  Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
-                    child: SegmentedButton<EventFilter>(
-                      segments: const <ButtonSegment<EventFilter>>[
-                        ButtonSegment<EventFilter>(value: EventFilter.upcoming, label: Text('Upcoming'), icon: Icon(Icons.event_available)),
-                        ButtonSegment<EventFilter>(value: EventFilter.past, label: Text('Past'), icon: Icon(Icons.event_busy)),
-                      ],
-                      selected: {state.currentFilter},
-                      onSelectionChanged: (Set<EventFilter> newSelection) {
-                        // Dispatch the FilterEvents event to the BLoC when the user taps a segment
-                        if (newSelection.isNotEmpty) {
-                          context.read<EventListBloc>().add(FilterEvents(newSelection.first));
-                        }
-                      },
-                    ),
-                  ),
-                  // --- Event List ---
-                  Expanded( // Make the list take remaining space
-                    child: state.filteredEvents.isEmpty
-                        ? Center(child: Text('No ${state.currentFilter.name} events found.'))
-                        : RefreshIndicator(
-                      onRefresh: () async => context.read<EventListBloc>().add(LoadEvents(club.id)),
-                      child: ListView.builder(
-                        padding: const EdgeInsets.all(16.0),
-                        itemCount: state.filteredEvents.length,
-                        itemBuilder: (context, index) {
-                          final event = state.filteredEvents[index];
-                          return _buildEventCard(context, event);
-                        },
+                  Column(
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+                        child: SegmentedButton<EventFilter>(
+                          segments: const <ButtonSegment<EventFilter>>[
+                            ButtonSegment<EventFilter>(value: EventFilter.upcoming, label: Text('Upcoming'), icon: Icon(Icons.event_available)),
+                            ButtonSegment<EventFilter>(value: EventFilter.past, label: Text('Past'), icon: Icon(Icons.event_busy)),
+                          ],
+                          selected: {loadedState.currentFilter},
+                          onSelectionChanged: (Set<EventFilter> newSelection) {
+                            if (newSelection.isNotEmpty) {
+                              context.read<EventListBloc>().add(FilterEvents(newSelection.first));
+                            }
+                          },
+                        ),
                       ),
-                    ),
+                      Expanded(
+                        child: loadedState.filteredEvents.isEmpty
+                            ? Center(child: Text('No ${loadedState.currentFilter.name} events found.'))
+                            : RefreshIndicator(
+                          onRefresh: () async => context.read<EventListBloc>().add(LoadEvents(club.id)),
+                          child: ListView.builder(
+                            padding: const EdgeInsets.all(16.0),
+                            itemCount: loadedState.filteredEvents.length,
+                            itemBuilder: (listContext, index) {
+                              final event = loadedState!.filteredEvents[index];
+                              return _buildEventCard(listContext, event, isAuthorizedAdmin);
+                            },
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
+                  if (isLoadingOverlay)
+                    Container(
+                      color: Colors.black.withOpacity(0.1),
+                      child: const Center(child: CircularProgressIndicator()),
+                    ),
                 ],
               );
             }
             if (state is EventListError) {
-              // Error display with retry
               return Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -144,28 +179,16 @@ class EventListScreen extends StatelessWidget {
             return const Center(child: Text('Press refresh or pull down to load events.'));
           },
         ),
-        // --- Conditional Floating Action Button ---
-        floatingActionButton: _isAuthorizedAdmin() ? FloatingActionButton(
-          onPressed: () {
-            // TODO: Navigate to Create Event Screen
-            ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Navigate to Create Event (Not Implemented)')));
-          },
-          backgroundColor: Theme.of(context).colorScheme.primary,
-          foregroundColor: Theme.of(context).colorScheme.onPrimary,
-          tooltip: 'Create Event',
-          child: const Icon(Icons.add),
-        ) : null,
       ),
     );
   }
 
   // --- WIDGETS ---
-
-  Widget _buildEventCard(BuildContext context, Event event) {
+  Widget _buildEventCard(BuildContext context, Event event, bool isAdmin) {
     final bool isUpcoming = event.status == 'UPCOMING';
-    final DateFormat dateFormat = DateFormat('EEE, MMM d, yyyy'); // e.g., Sat, Apr 24, 2025
-    final DateFormat timeFormat = DateFormat('h:mm a'); // e.g., 11:30 AM
+    final DateFormat dateFormat = DateFormat('EEE, MMM d, yyyy');
+    final DateFormat timeFormat = DateFormat('h:mm a');
+    final eventListBloc = BlocProvider.of<EventListBloc>(context);
 
     return Card(
       margin: const EdgeInsets.only(bottom: 16.0),
@@ -175,94 +198,132 @@ class EventListScreen extends StatelessWidget {
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
         onTap: () {
-          // TODO: Navigate to Event Details Screen
-          ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Navigate to details for ${event.name} (Not Implemented)')));
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => EventDetailsScreen(
+                club: club,
+                event: event,
+                currentUser: currentUser,
+              ),
+            ),
+          );
         },
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Event Image (using same logic as home screen)
-            event.imageUrl != null && event.imageUrl!.isNotEmpty
-                ? Image.network(
-              event.imageUrl!,
-              height: 150, // Slightly taller image
-              width: double.infinity,
-              fit: BoxFit.cover,
-              loadingBuilder: (context, child, progress) => progress == null ? child : Container(height: 150, color: Colors.grey[300], child: const Center(child: CircularProgressIndicator())),
-              errorBuilder: (context, error, stackTrace) => _buildPlaceholderImage(context, event.name, height: 150.0),
-            )
-                : _buildPlaceholderImage(context, event.name, height: 150.0),
-
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Status Badge
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                        color: isUpcoming ? Colors.green.withOpacity(0.1) : Colors.grey.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(6)
-                    ),
-                    child: Text(
-                      event.status,
-                      style: TextStyle(
-                          color: isUpcoming ? Colors.green[800] : Colors.grey[700],
-                          fontWeight: FontWeight.bold,
-                          fontSize: 10
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16.0, 16.0, 8.0, 16.0),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Event Image
+              SizedBox(
+                width: 100,
+                height: 150,
+                child: ClipRRect( // Clip the image to rounded corners
+                  borderRadius: BorderRadius.circular(8.0),
+                  child: (event.imageUrl != null && event.imageUrl!.isNotEmpty)
+                      ? CachedNetworkImage(
+                    imageUrl: event.imageUrl!,
+                    fit: BoxFit.cover,
+                    placeholder: (context, url) => Container(color: Colors.grey[300], child: const Center(child: CircularProgressIndicator())),
+                    errorWidget: (context, url, error) => _buildPlaceholderImage(context, event.name),
+                  )
+                      : _buildPlaceholderImage(context, event.name),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                          color: isUpcoming ? Colors.green.withOpacity(0.1) : Colors.grey.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(6)
+                      ),
+                      child: Text(
+                        event.status,
+                        style: TextStyle(
+                            color: isUpcoming ? Colors.green[800] : Colors.grey[700],
+                            fontWeight: FontWeight.bold,
+                            fontSize: 10
+                        ),
                       ),
                     ),
-                  ),
-                  const SizedBox(height: 8),
-                  // Date and Time
-                  Text(
-                    '${dateFormat.format(event.date)} at ${timeFormat.format(event.date)}',
-                    style: TextStyle(fontSize: 13, color: Theme.of(context).primaryColor, fontWeight: FontWeight.w500),
-                  ),
-                  const SizedBox(height: 6),
-                  // Event Name
-                  Text(
-                    event.name,
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 8),
-                  // Location
-                  Row(
-                    children: [
-                      Icon(Icons.location_on_outlined, size: 16, color: Theme.of(context).hintColor),
-                      const SizedBox(width: 4),
-                      Expanded(
-                        child: Text(
-                          event.location,
-                          style: TextStyle(fontSize: 13, color: Theme.of(context).hintColor),
-                          overflow: TextOverflow.ellipsis,
-                        ),
+                    const SizedBox(height: 8),
+                    Text('${dateFormat.format(event.date)} at ${timeFormat.format(event.date)}',
+                        style: TextStyle(fontSize: 13, color: Theme.of(context).primaryColor, fontWeight: FontWeight.w500)),
+                    const SizedBox(height: 6),
+                    Text(event.name, style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Icon(Icons.location_on_outlined, size: 16, color: Theme.of(context).hintColor),
+                        const SizedBox(width: 4),
+                        Expanded(child: Text(event.location, style: TextStyle(color: Theme.of(context).hintColor))),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              if (isAdmin)
+                SizedBox(
+                  width: 40,
+                  child: PopupMenuButton<EventAdminAction>(
+                    icon: const Icon(Icons.more_vert),
+                    tooltip: 'Event Actions',
+                    onSelected: (EventAdminAction action) async {
+                      if (action == EventAdminAction.update) {
+                        final result = await Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => BlocProvider.value(
+                              value: eventListBloc,
+                              child: EventEditScreen(club: club, event: event),
+                            ),
+                          ),
+                        );
+                        if (result == true && context.mounted) {
+                          eventListBloc.add(LoadEvents(club.id));
+                        }
+                      } else if (action == EventAdminAction.delete) {
+                        bool confirmed = await _showDeleteConfirmationDialog(context, event);
+                        if (confirmed && context.mounted) {
+                          eventListBloc.add(DeleteEvent(clubId: club.id, eventId: event.id));
+                        }
+                      }
+                    },
+                    itemBuilder: (BuildContext context) => <PopupMenuEntry<EventAdminAction>>[
+                      const PopupMenuItem<EventAdminAction>(
+                        value: EventAdminAction.update,
+                        child: ListTile(leading: Icon(Icons.edit_outlined), title: Text('Edit Event')),
+                      ),
+                      const PopupMenuItem<EventAdminAction>(
+                        value: EventAdminAction.delete,
+                        child: ListTile(leading: Icon(Icons.delete_outline, color: Colors.redAccent), title: Text('Delete Event')),
                       ),
                     ],
                   ),
-                  // TODO: Add Participant Count (requires backend change or N+1 call)
-                ],
-              ),
-            ),
-          ],
+                ),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  // Placeholder image helper
-  Widget _buildPlaceholderImage(BuildContext context, String eventName, {double height = 120.0}) {
+  Widget _buildPlaceholderImage(BuildContext context, String eventName) {
     return Container(
-      height: height,
-      width: double.infinity,
+      width: 100,
       color: Theme.of(context).colorScheme.secondaryContainer.withOpacity(0.5),
       child: Center(
-          child: Text(
-            eventName,
-            textAlign: TextAlign.center,
-            style: TextStyle(color: Theme.of(context).colorScheme.onSecondaryContainer, fontWeight: FontWeight.bold),
+          child: Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Text(
+              eventName,
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Theme.of(context).colorScheme.onSecondaryContainer, fontWeight: FontWeight.bold),
+            ),
           )
       ),
     );

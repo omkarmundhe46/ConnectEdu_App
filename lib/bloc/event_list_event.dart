@@ -23,3 +23,29 @@ class FilterEvents extends EventListEvent {
   @override
   List<Object> get props => [filter];
 }
+
+// --- ADD NEW EVENTS ---
+class CreateEvent extends EventListEvent {
+  final int clubId;
+  final Map<String, dynamic> eventData;
+  const CreateEvent({required this.clubId, required this.eventData});
+  @override
+  List<Object> get props => [clubId, eventData];
+}
+
+class UpdateEvent extends EventListEvent {
+  final int clubId;
+  final int eventId;
+  final Map<String, dynamic> eventData;
+  const UpdateEvent({required this.clubId, required this.eventId, required this.eventData});
+  @override
+  List<Object> get props => [clubId, eventId, eventData];
+}
+
+class DeleteEvent extends EventListEvent {
+  final int clubId;
+  final int eventId;
+  const DeleteEvent({required this.clubId, required this.eventId});
+  @override
+  List<Object> get props => [clubId, eventId];
+}

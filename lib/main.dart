@@ -1,17 +1,15 @@
 import 'package:connectedu_app/bloc/auth_bloc.dart';
-import 'package:connectedu_app/bloc/home_bloc.dart'; // Import HomeBloc
+import 'package:connectedu_app/bloc/home_bloc.dart';
 import 'package:connectedu_app/repositories/auth_repository.dart';
 import 'package:connectedu_app/repositories/club_repository.dart';
 import 'package:connectedu_app/repositories/event_repository.dart';
-import 'package:connectedu_app/screens/auth_navigator.dart'; // Import AuthNavigator
+import 'package:connectedu_app/screens/auth_navigator.dart';
 import 'package:connectedu_app/screens/home_screen.dart';
 import 'package:connectedu_app/services/api_service.dart';
 import 'package:connectedu_app/services/secure_storage_service.dart';
-import 'package:connectedu_app/theme/theme.dart'; // Import your custom theme
+import 'package:connectedu_app/theme/theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-// Note: FlutterSecureStorage is used internally by SecureStorageService now
-// import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 
 void main() {
   // Initialize services and repositories ONCE here

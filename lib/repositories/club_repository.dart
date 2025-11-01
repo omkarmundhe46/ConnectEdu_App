@@ -11,7 +11,6 @@ class ClubRepository {
     try {
       final response = await _apiService.dio.get('/api/clubs'); // Endpoint via Gateway
       final data = response.data as List;
-      // The updated Club.fromJson will now handle the mapping
       return data.map((clubJson) => Club.fromJson(clubJson)).toList();
     } on DioException catch (e) {
       debugPrint('Failed to load clubs: ${e.response?.data ?? e.message}');
@@ -73,6 +72,21 @@ class ClubRepository {
     } catch (e) {
       debugPrint('Failed to delete club: $e');
       throw Exception('Failed to delete club.');
+    }
+  }
+
+  // --- ADD THIS METHOD ---
+  // This is required by EventDetailBloc
+  Future<bool> isMember(int clubId, int userId) async {
+    try {
+      final response = await _apiService.dio.get(
+        '/api/clubs/$clubId/members/$userId/check', // Use gateway URL
+      );
+      return response.data as bool;
+    } catch (e) {
+      debugPrint('Error checking membership: $e');
+      // Assume not a member if the check fails for any reason
+      return false;
     }
   }
 }
