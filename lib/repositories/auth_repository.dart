@@ -103,4 +103,37 @@ class AuthRepository {
     }
     return null;
   }
+
+  Future<User> updateProfile({String? phone, String? profileImageUrl}) async {
+    try {
+      debugPrint('Attempting to update profile...');
+      final response = await _apiService.dio.put(
+        '/api/users/profile',
+        data: {
+          'phone': phone,
+          'profileImageUrl': profileImageUrl,
+        },
+      );
+
+      if (response.statusCode == 200 && response.data != null) {
+        final String token = response.data['token'];
+        debugPrint('Profile update successful, received new token.');
+        await _secureStorageService.saveToken(token); // Save the new token
+
+        final Map<String, dynamic> decodedToken = JwtDecoder.decode(token);
+        final user = User.fromToken(decodedToken);
+        return user;
+      } else {
+        debugPrint('Profile update failed with status: ${response.statusCode}');
+        throw Exception('Profile update failed');
+      }
+    } on DioException catch (e) {
+      debugPrint('Profile update API error: ${e.response?.data ?? e.message}');
+      throw Exception('Profile update failed: ${e.response?.data?['message'] ?? e.message}');
+    } catch (e) {
+      debugPrint('Profile update error: $e');
+      throw Exception('Profile update failed: ${e.toString()}');
+    }
+  }
+
 }

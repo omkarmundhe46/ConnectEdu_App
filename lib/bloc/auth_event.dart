@@ -3,7 +3,7 @@ part of 'auth_bloc.dart';
 abstract class AuthEvent extends Equatable {
   const AuthEvent();
   @override
-  List<Object> get props => [];
+  List<Object?> get props => [];
 }
 
 class AppStarted extends AuthEvent {}
@@ -20,4 +20,14 @@ class LoggedIn extends AuthEvent {
 }
 
 class LoggedOut extends AuthEvent {}
+
+class ProfileUpdated extends AuthEvent {
+  final String? phone;
+  final String? profileImageUrl;
+
+  const ProfileUpdated({this.phone, this.profileImageUrl});
+
+  @override
+  List<Object?> get props => [phone, profileImageUrl];
+}
 

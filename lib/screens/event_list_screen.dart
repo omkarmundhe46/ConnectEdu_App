@@ -11,7 +11,7 @@ import 'package:intl/intl.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
 // Enum for Admin actions
-enum EventAdminAction { update, delete }
+enum EventAdminAction { update, delete, updateLink }
 
 class EventListScreen extends StatelessWidget {
   final Club club;
@@ -24,6 +24,45 @@ class EventListScreen extends StatelessWidget {
     return currentUser.role == 'CLUB_ADMIN' && currentUser.managedClubId == club.id;
   }
   // --- END OF CORRECTION ---
+
+  Future<void> _showUpdateLinkDialog(BuildContext context, Event event, EventListBloc bloc) async {
+    final controller = TextEditingController(text: event.meetingLink ?? '');
+
+    return showDialog<void>(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          title: const Text('Update Meeting Link'),
+          content: TextField(
+            controller: controller,
+            decoration: const InputDecoration(
+              hintText: 'https://zoom.us/j/123456...',
+              labelText: 'Meeting URL',
+            ),
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('Cancel'),
+              onPressed: () => Navigator.of(dialogContext).pop(),
+            ),
+            TextButton(
+              child: const Text('Update'),
+              onPressed: () {
+                final newLink = controller.text;
+                // Dispatch the BLoC event
+                bloc.add(UpdateMeetingLink(
+                  clubId: club.id,
+                  eventId: event.id,
+                  meetingLink: newLink,
+                ));
+                Navigator.of(dialogContext).pop();
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
 
   // Helper for Delete Confirmation Dialog
   Future<bool> _showDeleteConfirmationDialog(BuildContext context, Event event) async {
@@ -291,12 +330,18 @@ class EventListScreen extends StatelessWidget {
                         if (confirmed && context.mounted) {
                           eventListBloc.add(DeleteEvent(clubId: club.id, eventId: event.id));
                         }
+                      } else if (action == EventAdminAction.updateLink) {
+                        _showUpdateLinkDialog(context, event, eventListBloc);
                       }
                     },
                     itemBuilder: (BuildContext context) => <PopupMenuEntry<EventAdminAction>>[
                       const PopupMenuItem<EventAdminAction>(
                         value: EventAdminAction.update,
                         child: ListTile(leading: Icon(Icons.edit_outlined), title: Text('Edit Event')),
+                      ),
+                      const PopupMenuItem<EventAdminAction>(
+                        value: EventAdminAction.updateLink,
+                        child: ListTile(leading: Icon(Icons.link_outlined), title: Text('Update Link')),
                       ),
                       const PopupMenuItem<EventAdminAction>(
                         value: EventAdminAction.delete,

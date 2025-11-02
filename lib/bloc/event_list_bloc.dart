@@ -18,6 +18,7 @@ class EventListBloc extends Bloc<EventListEvent, EventListState> {
     on<CreateEvent>(_onCreateEvent);
     on<UpdateEvent>(_onUpdateEvent);
     on<DeleteEvent>(_onDeleteEvent);
+    on<UpdateMeetingLink>(_onUpdateMeetingLink);
   }
 
   List<Event> _filterEvents(List<Event> allEvents, EventFilter filter) {
@@ -25,6 +26,25 @@ class EventListBloc extends Bloc<EventListEvent, EventListState> {
       return allEvents.where((event) => event.status == 'UPCOMING').toList();
     } else {
       return allEvents.where((event) => event.status == 'COMPLETED').toList();
+    }
+  }
+
+  Future<void> _onUpdateMeetingLink(UpdateMeetingLink event, Emitter<EventListState> emit) async {
+    final currentState = state is EventListLoaded ? (state as EventListLoaded) : null;
+    emit(EventActionInProgress(previousState: currentState));
+    try {
+      await eventRepository.updateMeetingLink(event.clubId, event.eventId, event.meetingLink);
+      emit(const EventActionSuccess('Meeting link updated!'));
+      add(LoadEvents(event.clubId)); // Refresh the list
+    } catch (e) {
+      debugPrint("Error updating meeting link: $e");
+      String errorMessage = e.toString();
+      if (e is DioException) errorMessage = _parseDioError(e);
+      emit(EventActionFailure(errorMessage.replaceFirst('Exception: ', '')));
+      if (currentState != null) {
+        await Future.delayed(const Duration(milliseconds: 50));
+        emit(currentState);
+      }
     }
   }
 

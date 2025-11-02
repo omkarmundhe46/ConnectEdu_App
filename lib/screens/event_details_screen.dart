@@ -4,6 +4,7 @@ import 'package:connectedu_app/bloc/event_detail_state.dart';
 import 'package:connectedu_app/models/club.dart';
 import 'package:connectedu_app/models/event.dart';
 import 'package:connectedu_app/models/user.dart';
+import 'package:connectedu_app/repositories/certificate-service.dart';
 import 'package:connectedu_app/repositories/club_repository.dart';
 import 'package:connectedu_app/repositories/event_repository.dart';
 import 'package:connectedu_app/screens/registration_form_screen.dart';
@@ -287,8 +288,7 @@ class EventDetailsScreen extends StatelessWidget {
           }
 
           if (state is EventDetailError) {
-            // --- CHANGE HERE: Don't show a button on error ---
-            return const SizedBox.shrink();
+            return const SizedBox.shrink(); // Don't show a button on error
           }
 
           // We must be in EventDetailLoaded state here
@@ -296,7 +296,9 @@ class EventDetailsScreen extends StatelessWidget {
           bool isEventOver = event.status == 'COMPLETED';
           String userRole = currentUser.role;
 
-          // --- NEW, ORDERED LOGIC ---
+          // --- 1. CHECK IF USER IS STAFF OF *THIS* CLUB ---
+          bool isThisClubStaff = (userRole == 'CLUB_ADMIN' && currentUser.managedClubId == club.id) ||
+              (userRole == 'CLUB_MEMBER' && loadedState.isClubMember);
 
           // Priority 1: User is already registered for the event.
           if (loadedState.isRegistered) {
@@ -306,10 +308,40 @@ class EventDetailsScreen extends StatelessWidget {
                   child: OutlinedButton.icon(
                     icon: const Icon(Icons.download_outlined),
                     label: const Text('Certificate'),
-                    // Enable button only if the event is over
-                    onPressed: isEventOver ? () {
-                      // TODO: Add call to download certificate endpoint
-                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Downloading certificate...')));
+                    // --- START OF CHANGE ---
+                    // Make the onPressed async
+                    onPressed: isEventOver ? () async {
+                      final scaffoldMessenger = ScaffoldMessenger.of(context);
+                      scaffoldMessenger.showSnackBar(
+                        const SnackBar(
+                          content: Row(
+                            children: [
+                              CircularProgressIndicator(),
+                              SizedBox(width: 16),
+                              Text('Downloading Certificate...'),
+                            ],
+                          ),
+                          duration: Duration(seconds: 30),
+                        ),
+                      );
+
+                      try {
+                        // Call the new repository
+                        await context.read<CertificateRepository>().downloadCertificate(
+                          event.id,
+                          currentUser.id,
+                          event.name,
+                        );
+                        scaffoldMessenger.removeCurrentSnackBar();
+                        scaffoldMessenger.showSnackBar(
+                          const SnackBar(content: Text('Download complete! Opening file...'), backgroundColor: Colors.green),
+                        );
+                      } catch (e) {
+                        scaffoldMessenger.removeCurrentSnackBar();
+                        scaffoldMessenger.showSnackBar(
+                          SnackBar(content: Text('Download Failed: ${e.toString().replaceFirst("Exception: ", "")}'), backgroundColor: Colors.red),
+                        );
+                      }
                     } : null,
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 16),
@@ -317,20 +349,15 @@ class EventDetailsScreen extends StatelessWidget {
                     ),
                   ),
                 ),
-                if (event.meetingLink != null && event.meetingLink!.isNotEmpty) ...[
+                // --- 2. SHOW JOIN BUTTON IF STAFF ---
+                // If they are registered, they might also be staff. Show Join button.
+                if (isThisClubStaff && event.meetingLink != null && event.meetingLink!.isNotEmpty) ...[
                   const SizedBox(width: 16),
                   Expanded(
                     child: ElevatedButton.icon(
                       icon: const Icon(Icons.videocam_outlined),
                       label: const Text('Join'),
-                      onPressed: () async {
-                        final Uri url = Uri.parse(event.meetingLink!);
-                        if (!await launchUrl(url)) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Could not launch meeting link'), backgroundColor: Colors.red),
-                          );
-                        }
-                      },
+                      onPressed: () => _launchMeetingLink(context, event.meetingLink!),
                       style: ElevatedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
@@ -344,34 +371,105 @@ class EventDetailsScreen extends StatelessWidget {
 
           // Priority 2: Event is over and user is not registered.
           if (isEventOver) {
-            // return _buildDisabledButton(text: 'Registration has Closed');
             return const SizedBox.shrink();
           }
 
-          // Priority 3: Block users based on their role.
-          if (userRole == 'COLLEGE_ADMIN' || userRole == 'CLUB_ADMIN') {
-            return const SizedBox.shrink();     // --- CHANGE HERE: Hide button ---
-          }
-          // Priority 4: Logic for CLUB_MEMBER
-          if (userRole == 'CLUB_MEMBER') {
-            if (loadedState.isClubMember) {
-              // This is their own club's event, hide button
-              return const SizedBox.shrink();
-            } else {
-              // This is ANOTHER club's event, show register button
-              return _buildRegisterButton(context);
-            }
+          // --- 3. SHOW ADMIN/STAFF BUTTONS ---
+          // If the user is staff AND not registered, show the admin buttons.
+
+          if (isThisClubStaff) {
+            return _buildAdminButtonRow(context, event);
           }
 
-          // Priority 5: Logic for regular USER
-          if (userRole == 'USER') {
-            return _buildRegisterButton(context);
+          // Priority 4: User is COLLEGE_ADMIN (but not staff of this club)
+          if (userRole == 'COLLEGE_ADMIN') {
+            return const SizedBox.shrink(); // College Admins can't register
           }
-          // Default case (shouldn't be reached)
-          return const SizedBox.shrink();
+
+          // Priority 5: User is a USER or a CLUB_MEMBER of a DIFFERENT club.
+          // Both are allowed to register.
+          return _buildRegisterButton(context);
         },
       ),
     );
+  }
+
+  Widget _buildAdminButtonRow(BuildContext context, Event event) {
+    bool canJoin = event.meetingLink != null && event.meetingLink!.isNotEmpty;
+
+    return Row(
+      children: [
+        Expanded(
+          child: OutlinedButton.icon(
+            icon: const Icon(Icons.download_outlined),
+            label: const Text('Excel'),
+            onPressed: () async {
+              // Show a loading snackbar
+              final scaffoldMessenger = ScaffoldMessenger.of(context);
+              scaffoldMessenger.showSnackBar(
+                const SnackBar(
+                  content: Row(
+                    children: [
+                      CircularProgressIndicator(),
+                      SizedBox(width: 16),
+                      Text('Downloading Excel file...'),
+                    ],
+                  ),
+                  duration: Duration(seconds: 30), // Keep it open
+                ),
+              );
+
+              try {
+                // Call the repository method
+                await context.read<EventRepository>().downloadParticipantsExcel(
+                  club.id,
+                  event.id,
+                  event.name.replaceAll(' ', '_'), // Create a safe filename
+                );
+                scaffoldMessenger.removeCurrentSnackBar();
+                scaffoldMessenger.showSnackBar(
+                  const SnackBar(content: Text('Download complete! Opening file...'), backgroundColor: Colors.green),
+                );
+              } catch (e) {
+                scaffoldMessenger.removeCurrentSnackBar();
+                scaffoldMessenger.showSnackBar(
+                  SnackBar(content: Text('Download Failed: $e'), backgroundColor: Colors.red),
+                );
+              }
+            },
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+          ),
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: ElevatedButton.icon(
+            icon: const Icon(Icons.videocam_outlined),
+            label: const Text('Join'),
+            // Enable/disable based on meeting link
+            onPressed: canJoin ? () => _launchMeetingLink(context, event.meetingLink!) : null,
+            style: ElevatedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  // --- ADD THIS HELPER METHOD ---
+  Future<void> _launchMeetingLink(BuildContext context, String url) async {
+    final Uri uri = Uri.parse(url);
+    if (!await launchUrl(uri)) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not launch meeting link'), backgroundColor: Colors.red),
+        );
+      }
+    }
   }
 
   // Helper widget for the Register button
@@ -402,16 +500,3 @@ class EventDetailsScreen extends StatelessWidget {
     );
   }
 }
-
-//   Widget _buildDisabledButton({required String text}) {
-//     return ElevatedButton(
-//       onPressed: null, // This disables the button
-//       style: ElevatedButton.styleFrom(
-//         padding: const EdgeInsets.symmetric(vertical: 16),
-//         disabledBackgroundColor: Colors.grey.shade300,
-//         disabledForegroundColor: Colors.grey.shade600,
-//       ),
-//       child: Text(text, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-//     );
-//   }
-// }

@@ -17,6 +17,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<AppStarted>(_onAppStarted);
     on<LoggedIn>(_onLoggedIn);
     on<LoggedOut>(_onLoggedOut);
+    on<ProfileUpdated>(_onProfileUpdated);
   }
 
   // This handler checks for an existing token on app start
@@ -50,6 +51,35 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     } catch (e) {
       debugPrint('Login Error: $e');
       emit(AuthFailure(error: e.toString().replaceFirst('Exception: ', '')));
+    }
+  }
+
+  Future<void> _onProfileUpdated(ProfileUpdated event, Emitter<AuthState> emit) async {
+    // We can only update if we are already authenticated
+    if (state is AuthAuthenticated) {
+      final currentUser = (state as AuthAuthenticated).user;
+
+      // 1. Emit isUpdating=true to show loading on EditProfileScreen
+      emit(AuthAuthenticated(user: currentUser, isUpdating: true));
+
+      try {
+        // 2. Call the repository
+        final updatedUser = await authRepository.updateProfile(
+          phone: event.phone,
+          profileImageUrl: event.profileImageUrl,
+        );
+
+        // 3. Emit success with the new user object
+        emit(AuthUpdateSuccess(user: updatedUser));
+
+      } catch (e) {
+        debugPrint('Profile Update Error: $e');
+        // 4. Emit failure, but keep the user logged in with their OLD data
+        emit(AuthUpdateFailure(
+          error: e.toString().replaceFirst('Exception: ', ''),
+          user: currentUser,
+        ));
+      }
     }
   }
 

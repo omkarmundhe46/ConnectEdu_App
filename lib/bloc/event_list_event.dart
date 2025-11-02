@@ -49,3 +49,18 @@ class DeleteEvent extends EventListEvent {
   @override
   List<Object> get props => [clubId, eventId];
 }
+
+class UpdateMeetingLink extends EventListEvent {
+  final int clubId;
+  final int eventId;
+  final String meetingLink;
+
+  const UpdateMeetingLink({
+    required this.clubId,
+    required this.eventId,
+    required this.meetingLink,
+  });
+
+  @override
+  List<Object> get props => [clubId, eventId, meetingLink];
+}

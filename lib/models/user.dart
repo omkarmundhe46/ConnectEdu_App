@@ -3,16 +3,22 @@ import 'package:jwt_decoder/jwt_decoder.dart';
 class User {
   final int id;
   final String email;
-  final String name; // ADD THIS FIELD
-  final String role; // Stores the primary role
-  final int? managedClubId; // Use int? for nullable integer
+  final String name;
+  final String role;
+  final int? managedClubId;
+  final String? phone;
+  final String? profileImageUrl;
+  final String department;
 
   User({
     required this.id,
     required this.email,
-    required this.name, // ADD TO CONSTRUCTOR
+    required this.name,
     required this.role,
     this.managedClubId,
+    this.phone,
+    this.profileImageUrl,
+    required this.department,
   });
 
   // --- THIS IS THE FIX ---
@@ -40,11 +46,14 @@ class User {
       // Safely extract userId (might be Integer)
       id: decodedToken['userId'] is int
           ? decodedToken['userId']
-          : int.tryParse(decodedToken['userId'].toString()) ?? 0, // Default to 0 if parsing fails
-      email: decodedToken['sub'] ?? '', // 'sub' claim usually holds the email/username
-      name: decodedToken['name'] ?? 'User', // --- EXTRACT NAME (Add 'name' claim to JWT in user-service) ---
+          : int.tryParse(decodedToken['userId'].toString()) ?? 0,
+      email: decodedToken['sub'] ?? '',
+      name: decodedToken['name'] ?? 'User',
       role: primaryRole,
       managedClubId: managedId,
+      phone: decodedToken['phone'] as String?,
+      profileImageUrl: decodedToken['profileImageUrl'] as String?,
+      department: decodedToken['department'] as String? ?? 'Not Set',
     );
   }
 }

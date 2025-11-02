@@ -18,24 +18,26 @@ class EventDetailBloc extends Bloc<EventDetailEvent, EventDetailState> {
   Future<void> _onLoadDetails(LoadDetails event, Emitter<EventDetailState> emit) async {
     emit(EventDetailLoading());
     try {
-      // Run both checks at the same time
+      // --- START OF CHANGE ---
+
+      // Run all checks at the same time
       final results = await Future.wait([
         clubRepository.isMember(event.clubId, event.userId),
         eventRepository.getEventParticipants(event.clubId, event.eventId),
+        eventRepository.checkRegistration(event.clubId, event.eventId), // <-- ADD THIS
       ]);
 
       final bool isClubMember = results[0] as bool;
-      // This is now a List<ParticipantResponseDto>
       final List<ParticipantResponseDto> participants = results[1] as List<ParticipantResponseDto>;
-
-      // Check if the current user is in the participant list
-      final bool isRegistered = participants.any((p) => p.userId == event.userId);
+      final bool isRegistered = results[2] as bool; // <-- GET RESULT FROM HERE
 
       emit(EventDetailLoaded(
         isClubMember: isClubMember,
-        isRegistered: isRegistered,
+        isRegistered: isRegistered, // <-- USE THE NEW VARIABLE
         participants: participants,
       ));
+
+      // --- END OF CHANGE ---
     } catch (e) {
       debugPrint("Error loading event details: $e");
       emit(EventDetailError(e.toString().replaceFirst('Exception: ', '')));

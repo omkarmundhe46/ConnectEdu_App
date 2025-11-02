@@ -15,6 +15,7 @@ import 'package:connectedu_app/screens/club_list_screen.dart';
 import 'package:connectedu_app/screens/event_details_screen.dart';
 import 'package:connectedu_app/screens/event_edit_screen.dart';
 import 'package:connectedu_app/screens/event_list_screen.dart';
+import 'package:connectedu_app/screens/profile_screen.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -304,7 +305,10 @@ class HomeScreen extends StatelessWidget {
           ListTile(
             leading: const Icon(Icons.person_outline),
             title: const Text('Profile'),
-            onTap: () => Navigator.pop(context),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(context, MaterialPageRoute(builder: (_) => ProfileScreen(user: user)));
+            },
           ),
           const Divider(),
           ListTile(
@@ -431,7 +435,9 @@ class HomeScreen extends StatelessWidget {
             }),
             const SizedBox(width: 48),
             _buildBottomNavItem(context, icon: Icons.notifications_outlined, label: 'Notify', onTap: () {}),
-            _buildBottomNavItem(context, icon: Icons.person_outline, label: 'Profile', onTap: () {}),
+            _buildBottomNavItem(context, icon: Icons.person_outline, label: 'Profile', onTap: () {
+              Navigator.push(context, MaterialPageRoute(builder: (_) => ProfileScreen(user: user)));
+            }),
           ],
         ),
       ),

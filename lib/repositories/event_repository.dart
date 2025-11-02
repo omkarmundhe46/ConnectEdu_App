@@ -1,8 +1,13 @@
+import 'dart:io';
+
 import 'package:connectedu_app/dto/participant_response_dto.dart'; // Import the new DTO
 import 'package:connectedu_app/models/event.dart';
+import 'package:connectedu_app/models/my_registration.dart';
 import 'package:connectedu_app/services/api_service.dart';
 import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
+import 'package:open_file/open_file.dart';
+import 'package:path_provider/path_provider.dart';
 
 class EventRepository {
   final ApiService _apiService;
@@ -59,7 +64,39 @@ class EventRepository {
     }
   }
 
-  // --- ADD NEW METHODS FOR EVENT CRUD ---
+  Future<List<MyRegistration>> getMyRegistrations() async {
+    try {
+      final response = await _apiService.dio.get('/api/events/my-registrations');
+      final data = response.data as List;
+      return data.map((json) => MyRegistration.fromJson(json)).toList();
+    } on DioException catch (e) {
+      debugPrint('Failed to load my registrations: ${e.response?.data ?? e.message}');
+      throw Exception('Failed to load your registrations.');
+    } catch (e) {
+      debugPrint('Failed to load my registrations: $e');
+      throw Exception('Failed to load your registrations.');
+    }
+  }
+
+  Future<void> updateMeetingLink(int clubId, int eventId, String meetingLink) async {
+    try {
+      await _apiService.dio.put(
+        '/api/clubs/$clubId/events/$eventId/meeting-link',
+        data: meetingLink, // Send the raw string as the body
+        options: Options(
+          // Set the content type to plain text
+          contentType: 'text/plain',
+        ),
+      );
+    } on DioException catch (e) {
+      final message = e.response?.data?['message'] ?? e.message ?? 'Failed to update meeting link.';
+      debugPrint('Failed to update link: $message');
+      throw Exception(message);
+    } catch (e) {
+      debugPrint('Failed to update link: $e');
+      throw Exception('An unexpected error occurred.');
+    }
+  }
 
   Future<Event> createEvent(int clubId, Map<String, dynamic> eventData) async {
     try {
@@ -95,6 +132,22 @@ class EventRepository {
     }
   }
 
+  Future<bool> checkRegistration(int clubId, int eventId) async {
+    try {
+      final response = await _apiService.dio.get(
+        '/api/clubs/$clubId/events/$eventId/check-registration',
+      );
+      // The backend returns a boolean directly
+      return response.data as bool;
+    } on DioException catch (e) {
+      debugPrint('Failed to check registration: ${e.response?.data ?? e.message}');
+      return false; // Assume not registered if check fails
+    } catch (e) {
+      debugPrint('Failed to check registration: $e');
+      return false;
+    }
+  }
+
   Future<void> deleteEvent(int clubId, int eventId) async {
     try {
       await _apiService.dio.delete('/api/clubs/$clubId/events/$eventId');
@@ -107,4 +160,40 @@ class EventRepository {
       throw Exception('An unexpected error occurred.');
     }
   }
+
+  Future<void> downloadParticipantsExcel(int clubId, int eventId, String eventName) async {
+    try {
+      // 2. Get the temporary directory to save the file
+      final directory = await getTemporaryDirectory();
+      final filePath = '${directory.path}/participants_$eventName.xlsx';
+      final file = File(filePath);
+
+      debugPrint('Downloading Excel to: $filePath');
+
+      // 3. Use Dio to download the file (ApiService's Dio will add the auth token)
+      await _apiService.dio.download(
+        '/api/clubs/$clubId/events/$eventId/participants/excel',
+        file.path,
+        options: Options(
+          responseType: ResponseType.bytes, // Important for file downloads
+        ),
+      );
+
+      debugPrint('Download complete.');
+
+      // 4. Open the downloaded file
+      final openResult = await OpenFile.open(file.path);
+      if (openResult.type != ResultType.done) {
+        debugPrint('Could not open file: ${openResult.message}');
+        throw Exception('Could not open the downloaded file: ${openResult.message}');
+      }
+    } on DioException catch (e) {
+      debugPrint('Failed to download Excel file: ${e.response?.data ?? e.message}');
+      throw Exception('Failed to download Excel file.');
+    } catch (e) {
+      debugPrint('Failed to download/open Excel file: $e');
+      throw Exception(e.toString());
+    }
+  }
+
 }
