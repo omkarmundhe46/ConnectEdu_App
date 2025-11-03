@@ -1,6 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:connectedu_app/bloc/auth_bloc.dart';
 import 'package:connectedu_app/models/user.dart';
+import 'package:connectedu_app/screens/change_password_screen.dart';
 import 'package:connectedu_app/screens/edit_profile_screen.dart';
 import 'package:connectedu_app/screens/my_registrations.dart';
 import 'package:flutter/material.dart';
@@ -233,7 +234,12 @@ class ProfileScreen extends StatelessWidget {
                               title: 'Change Password',
                               subtitle: 'Update your login password',
                               onTap: () {
-                                // TODO: Navigate to Change Password Screen
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => const ChangePasswordScreen(),
+                                  ),
+                                );
                               },
                             ),
                           ],

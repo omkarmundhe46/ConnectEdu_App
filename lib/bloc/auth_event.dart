@@ -31,3 +31,13 @@ class ProfileUpdated extends AuthEvent {
   List<Object?> get props => [phone, profileImageUrl];
 }
 
+class PasswordChanged extends AuthEvent {
+  final String currentPassword;
+  final String newPassword;
+
+  const PasswordChanged({required this.currentPassword, required this.newPassword});
+
+  @override
+  List<Object> get props => [currentPassword, newPassword];
+}
+

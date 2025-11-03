@@ -18,6 +18,37 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<LoggedIn>(_onLoggedIn);
     on<LoggedOut>(_onLoggedOut);
     on<ProfileUpdated>(_onProfileUpdated);
+    on<PasswordChanged>(_onPasswordChanged);
+  }
+
+  Future<void> _onPasswordChanged(PasswordChanged event, Emitter<AuthState> emit) async {
+    // We can only update if we are already authenticated
+    if (state is AuthAuthenticated) {
+      final currentUser = (state as AuthAuthenticated).user;
+
+      // 1. Emit isUpdating=true
+      emit((state as AuthAuthenticated).copyWith(isUpdating: true));
+
+      try {
+        // 2. Call the repository
+        await authRepository.changePassword(
+          currentPassword: event.currentPassword,
+          newPassword: event.newPassword,
+        );
+
+        // 3. Emit success
+        // We can reuse AuthUpdateSuccess since it just pops the screen
+        emit(AuthUpdateSuccess(user: currentUser));
+
+      } catch (e) {
+        debugPrint('Password Change Error: $e');
+        // 4. Emit failure, but keep the user logged in
+        emit(AuthUpdateFailure(
+          error: e.toString().replaceFirst('Exception: ', ''),
+          user: currentUser,
+        ));
+      }
+    }
   }
 
   // This handler checks for an existing token on app start

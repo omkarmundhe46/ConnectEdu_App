@@ -11,6 +11,33 @@ class AuthRepository {
 
   AuthRepository(this._apiService, this._secureStorageService);
 
+  Future<void> changePassword({
+    required String currentPassword,
+    required String newPassword,
+  }) async {
+    try {
+      debugPrint('Attempting to change password...');
+      final response = await _apiService.dio.post(
+        '/api/users/change-password',
+        data: {
+          'currentPassword': currentPassword,
+          'newPassword': newPassword,
+        },
+      );
+
+      if (response.statusCode == 200) {
+        debugPrint('Password change successful.');
+      } else {
+        throw Exception('Password change failed: ${response.data}');
+      }
+    } on DioException catch (e) {
+      debugPrint('Change password API error: ${e.response?.data ?? e.message}');
+      throw Exception(e.response?.data ?? 'An error occurred.');
+    } catch (e) {
+      debugPrint('Change password error: $e');
+      throw Exception(e.toString());
+    }
+  }
 
   Future<void> register({
     required String name,
