@@ -5,16 +5,19 @@ import 'package:connectedu_app/bloc/auth_bloc.dart';
 import 'package:connectedu_app/bloc/club_list_bloc.dart';
 import 'package:connectedu_app/bloc/event_list_bloc.dart';
 import 'package:connectedu_app/bloc/home_bloc.dart';
+import 'package:connectedu_app/bloc/notification_bloc/notification_bloc.dart';
 import 'package:connectedu_app/models/club.dart';
 import 'package:connectedu_app/models/event.dart';
 import 'package:connectedu_app/models/user.dart';
 import 'package:connectedu_app/repositories/club_repository.dart';
 import 'package:connectedu_app/repositories/event_repository.dart';
+import 'package:connectedu_app/repositories/notification_repository.dart';
 import 'package:connectedu_app/screens/club_edit_screen.dart';
 import 'package:connectedu_app/screens/club_list_screen.dart';
 import 'package:connectedu_app/screens/event_details_screen.dart';
 import 'package:connectedu_app/screens/event_edit_screen.dart';
 import 'package:connectedu_app/screens/event_list_screen.dart';
+import 'package:connectedu_app/screens/notification_screen.dart';
 import 'package:connectedu_app/screens/profile_screen.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
@@ -242,7 +245,7 @@ class HomeScreen extends StatelessWidget {
                 ),
               );
 
-            if (result == true && context.mounted) {
+              if (result == true && context.mounted) {
                 context.read<HomeBloc>().add(LoadHomeData());
               }
             } else if (context.mounted) {
@@ -287,7 +290,19 @@ class HomeScreen extends StatelessWidget {
           ListTile(
             leading: const Icon(Icons.home_outlined),
             title: const Text('Home'),
-            onTap: () => Navigator.pop(context),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(context, MaterialPageRoute(builder: (_) =>
+                  BlocProvider(
+                    create: (ctx) =>
+                    NotificationBloc(
+                        notificationRepository: ctx.read<NotificationRepository>()
+                    )
+                      ..add(LoadNotifications()),
+                    child: const NotificationScreen(),
+                  )
+              ));
+            },
           ),
           ListTile(
             leading: const Icon(Icons.explore_outlined),
@@ -434,7 +449,16 @@ class HomeScreen extends StatelessWidget {
               Navigator.push(context, MaterialPageRoute(builder: (_) => ClubListScreen(currentUser: user)));
             }),
             const SizedBox(width: 48),
-            _buildBottomNavItem(context, icon: Icons.notifications_outlined, label: 'Notify', onTap: () {}),
+            _buildBottomNavItem(context, icon: Icons.notifications_outlined, label: 'Notify', onTap: () {
+              Navigator.push(context, MaterialPageRoute(builder: (_) =>
+                  BlocProvider(
+                    create: (ctx) => NotificationBloc(
+                        notificationRepository: ctx.read<NotificationRepository>()
+                    )..add(LoadNotifications()),
+                    child: const NotificationScreen(),
+                  )
+              ));
+            }),
             _buildBottomNavItem(context, icon: Icons.person_outline, label: 'Profile', onTap: () {
               Navigator.push(context, MaterialPageRoute(builder: (_) => ProfileScreen(user: user)));
             }),

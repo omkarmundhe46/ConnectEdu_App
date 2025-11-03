@@ -4,6 +4,7 @@ import 'package:connectedu_app/repositories/auth_repository.dart';
 import 'package:connectedu_app/repositories/certificate-service.dart';
 import 'package:connectedu_app/repositories/club_repository.dart';
 import 'package:connectedu_app/repositories/event_repository.dart';
+import 'package:connectedu_app/repositories/notification_repository.dart';
 import 'package:connectedu_app/screens/auth_navigator.dart';
 import 'package:connectedu_app/screens/home_screen.dart';
 import 'package:connectedu_app/services/api_service.dart';
@@ -20,6 +21,7 @@ void main() {
   final ClubRepository clubRepository = ClubRepository(apiService);
   final EventRepository eventRepository = EventRepository(apiService);
   final CertificateRepository certificateRepository = CertificateRepository(apiService);
+  final NotificationRepository notificationRepository = NotificationRepository(apiService);
 
   runApp(
     // Provide repositories to the entire widget tree
@@ -31,6 +33,7 @@ void main() {
         RepositoryProvider.value(value: apiService), // Provide ApiService too
         RepositoryProvider.value(value: secureStorageService), // Provide StorageService
         RepositoryProvider.value(value: certificateRepository),
+        RepositoryProvider.value(value: notificationRepository),
       ],
       // Provide the AuthBloc at the top level
       child: BlocProvider(
