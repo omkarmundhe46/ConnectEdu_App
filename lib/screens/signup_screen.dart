@@ -1,4 +1,5 @@
 import 'package:connectedu_app/repositories/auth_repository.dart';
+import 'package:connectedu_app/screens/verification_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 class SignUpScreen extends StatefulWidget {
@@ -14,9 +15,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
-  final _departmentController = TextEditingController(); // Add department controller
+  final _departmentController = TextEditingController();
 
-  bool _isLoading = false; // Add loading state
+  bool _isLoading = false;
 
   void _signUp() async {
     if (_passwordController.text != _confirmPasswordController.text) {
@@ -28,7 +29,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
     if (_nameController.text.isEmpty ||
         _emailController.text.isEmpty ||
         _passwordController.text.isEmpty ||
-        _departmentController.text.isEmpty) { // Check department
+        _departmentController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Please fill all fields!"), backgroundColor: Colors.red),
       );
@@ -36,35 +37,50 @@ class _SignUpScreenState extends State<SignUpScreen> {
     }
 
     setState(() {
-      _isLoading = true; // Show loading indicator
+      _isLoading = true;
     });
 
     try {
       // Get the repository using context.read
       final authRepository = context.read<AuthRepository>();
-      final success = await authRepository.register(
+      final userEmail = _emailController.text;
+
+      await authRepository.register(
         name: _nameController.text,
-        email: _emailController.text,
+        email: userEmail,
         password: _passwordController.text,
-        department: _departmentController.text, // Pass department
+        department: _departmentController.text,
       );
 
-      if (success && mounted) { // Check if widget is still mounted
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Registration successful! Please sign in."), backgroundColor: Colors.green),
+          const SnackBar(content: Text("Verification code sent! Please check your email."), backgroundColor: Colors.green),
         );
-        widget.onSignInTapped(); // Navigate back to login
+
+        // We push the VerificationScreen and wait for a result.
+        final result = await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => VerificationScreen(email: userEmail),
+          ),
+        );
+
+        // If the result is 'true', it means verification was successful.
+        // We then call the callback to toggle the AuthNavigator to the LoginScreen.
+        if (result == true && mounted) {
+          widget.onSignInTapped();
+        }
       }
     } catch (e) {
-      if (mounted) { // Check if widget is still mounted
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text("Registration failed: ${e.toString()}"), backgroundColor: Colors.red),
         );
       }
     } finally {
-      if (mounted) { // Check if widget is still mounted
+      if (mounted) {
         setState(() {
-          _isLoading = false; // Hide loading indicator
+          _isLoading = false;
         });
       }
     }

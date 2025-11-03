@@ -12,32 +12,32 @@ class AuthRepository {
   AuthRepository(this._apiService, this._secureStorageService);
 
 
-  Future<bool> register({
+  Future<void> register({
     required String name,
     required String email,
     required String password,
-    required String department, // Add department
+    required String department,
   }) async {
     try {
       debugPrint('Attempting registration for: $email');
       final response = await _apiService.dio.post(
-        '/auth/register', // Use the correct public endpoint
+        '/auth/register',
         data: {
           'name': name,
           'email': email,
           'password': password,
-          'department': department, // Send department
+          'department': department,
         },
       );
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        debugPrint('Registration successful for: $email');
-        return true; // Indicate success
+        debugPrint('Registration successful for: $email. Verification required.');
+        // No token is returned, so we just return successfully.
       } else {
         debugPrint('Registration failed with status: ${response.statusCode}');
         throw Exception('Registration failed: ${response.data}');
       }
-    } on DioException catch (e) { // Catch Dio specific errors
+    } on DioException catch (e) {
       debugPrint('Registration API error: ${e.response?.data ?? e.message}');
       throw Exception('Registration failed: ${e.response?.data?['message'] ?? e.message}');
     } catch (e) {
@@ -136,4 +136,47 @@ class AuthRepository {
     }
   }
 
+  Future<void> verifyOtp({required String email, required String otp}) async {
+    try {
+      debugPrint('Attempting to verify OTP for: $email');
+      final response = await _apiService.dio.post(
+        '/auth/verify-otp',
+        data: {'email': email, 'otp': otp},
+      );
+
+      if (response.statusCode == 200) {
+        debugPrint('OTP verification successful.');
+      } else {
+        throw Exception('OTP verification failed: ${response.data}');
+      }
+    } on DioException catch (e) {
+      debugPrint('OTP verification API error: ${e.response?.data ?? e.message}');
+      throw Exception(e.response?.data ?? 'Invalid or expired OTP.');
+    } catch (e) {
+      debugPrint('OTP verification error: $e');
+      throw Exception(e.toString());
+    }
+  }
+
+  Future<void> resendOtp({required String email}) async {
+    try {
+      debugPrint('Attempting to resend OTP to: $email');
+      final response = await _apiService.dio.post(
+        '/auth/resend-otp',
+        data: {'email': email},
+      );
+
+      if (response.statusCode == 200) {
+        debugPrint('Resend OTP request successful.');
+      } else {
+        throw Exception('Resend OTP failed: ${response.data}');
+      }
+    } on DioException catch (e) {
+      debugPrint('Resend OTP API error: ${e.response?.data ?? e.message}');
+      throw Exception(e.response?.data ?? 'Could not resend code.');
+    } catch (e) {
+      debugPrint('Resend OTP error: $e');
+      throw Exception(e.toString());
+    }
+  }
 }

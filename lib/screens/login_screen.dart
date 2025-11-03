@@ -1,3 +1,4 @@
+import 'package:connectedu_app/screens/verification_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:connectedu_app/bloc/auth_bloc.dart';
@@ -30,10 +31,30 @@ class _LoginScreenState extends State<LoginScreen> {
     return Scaffold(
       body: BlocListener<AuthBloc, AuthState>(
         listener: (context, state) {
+
+
+
           if (state is AuthFailure) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(state.error), backgroundColor: Colors.red),
-            );
+            final error = state.error;
+
+            // Check for the specific verification error
+            if (error.contains("not verified")) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text(error), backgroundColor: Colors.orange),
+              );
+              // Redirect to verification screen
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => VerificationScreen(email: _emailController.text),
+                ),
+              );
+            } else {
+              // Show a generic login error
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text(error), backgroundColor: Colors.red),
+              );
+            }
           }
         },
         child: SafeArea(
