@@ -39,6 +39,22 @@ class AuthRepository {
     }
   }
 
+  Future<User> loginWithToken(String token) async {
+    try {
+      debugPrint('Logging in with received token...');
+      await _secureStorageService.saveToken(token);
+
+      final Map<String, dynamic> decodedToken = JwtDecoder.decode(token);
+      final user = User.fromToken(decodedToken);
+
+      debugPrint('Token saved and user created: ${user.email}');
+      return user;
+    } catch (e) {
+      debugPrint('Failed to login with token: $e');
+      throw Exception('Invalid token received.');
+    }
+  }
+
   Future<void> register({
     required String name,
     required String email,

@@ -2,6 +2,7 @@ import 'package:connectedu_app/screens/verification_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:connectedu_app/bloc/auth_bloc.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class LoginScreen extends StatefulWidget {
   final VoidCallback onSignUpTapped;
@@ -21,6 +22,19 @@ class _LoginScreenState extends State<LoginScreen> {
     final password = _passwordController.text;
     if (email.isNotEmpty && password.isNotEmpty) {
       context.read<AuthBloc>().add(LoggedIn(email: email, password: password));
+    }
+  }
+
+  Future<void> _loginWithGoogle() async {
+    // This is the URL of YOUR backend, not Google's
+    final Uri url = Uri.parse('http://localhost:8080/oauth2/authorization/google');      //  Android Emulator IP
+
+    if (await canLaunchUrl(url)) {
+      await launchUrl(url, mode: LaunchMode.externalApplication);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not launch browser. Please try again.'), backgroundColor: Colors.red),
+      );
     }
   }
 
@@ -163,13 +177,19 @@ class _LoginScreenState extends State<LoginScreen> {
                   _buildSocialLoginButton(
                       'Login with Google',
                       'assets/images/google_logo.png', // You'll need to add this asset
-                      isDarkMode
+                      isDarkMode,
+                      _loginWithGoogle,
                   ),
                   const SizedBox(height: 16),
                   _buildSocialLoginButton(
                       'Login with Facebook',
                       'assets/images/facebook_logo.png', // You'll need to add this asset
-                      isDarkMode
+                      isDarkMode,
+                      () {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Facebook login not implemented.')),
+                        );
+                      }
                   ),
 
                   const SizedBox(height: 48),
@@ -194,12 +214,10 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Widget _buildSocialLoginButton(String text, String assetPath, bool isDarkMode) {
+  Widget _buildSocialLoginButton(String text, String assetPath, bool isDarkMode, VoidCallback onPressed) {
     return OutlinedButton.icon(
       icon: Image.asset(assetPath, height: 24),
-      onPressed: () {
-        // TODO: Implement social login
-      },
+      onPressed: onPressed,
       label: Text(text),
       style: OutlinedButton.styleFrom(
         foregroundColor: isDarkMode ? Colors.white : Colors.black87,
@@ -209,5 +227,7 @@ class _LoginScreenState extends State<LoginScreen> {
       ),
     );
   }
+
+
 }
 

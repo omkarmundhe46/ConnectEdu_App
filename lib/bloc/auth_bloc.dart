@@ -19,6 +19,19 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<LoggedOut>(_onLoggedOut);
     on<ProfileUpdated>(_onProfileUpdated);
     on<PasswordChanged>(_onPasswordChanged);
+    on<LoggedInWithToken>(_onLoggedInWithToken);
+  }
+
+  Future<void> _onLoggedInWithToken(LoggedInWithToken event, Emitter<AuthState> emit) async {
+    emit(AuthLoading());
+    try {
+      // Use the repository to save the token and create the user
+      final user = await authRepository.loginWithToken(event.token);
+      emit(AuthAuthenticated(user: user));
+    } catch (e) {
+      debugPrint('Token Login Error: $e');
+      emit(AuthFailure(error: e.toString().replaceFirst('Exception: ', '')));
+    }
   }
 
   Future<void> _onPasswordChanged(PasswordChanged event, Emitter<AuthState> emit) async {

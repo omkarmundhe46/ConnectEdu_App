@@ -41,3 +41,11 @@ class PasswordChanged extends AuthEvent {
   List<Object> get props => [currentPassword, newPassword];
 }
 
+class LoggedInWithToken extends AuthEvent {
+  final String token;
+  const LoggedInWithToken({required this.token});
+
+  @override
+  List<Object?> get props => [token];
+}
+
