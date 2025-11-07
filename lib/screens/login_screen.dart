@@ -27,7 +27,21 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<void> _loginWithGoogle() async {
     // This is the URL of YOUR backend, not Google's
-    final Uri url = Uri.parse('http://localhost:8080/oauth2/authorization/google');      //  Android Emulator IP
+    // final Uri url = Uri.parse('http://localhost:8080/oauth2/authorization/google');      //  Android Emulator IP
+    final Uri url = Uri.parse('https://toniest-wilda-unfabulously.ngrok-free.dev/oauth2/authorization/google');      //  Android Emulator IP
+
+    if (await canLaunchUrl(url)) {
+      await launchUrl(url, mode: LaunchMode.externalApplication);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not launch browser. Please try again.'), backgroundColor: Colors.red),
+      );
+    }
+  }
+
+  Future<void> _loginWithFacebook() async {
+    // Use localhost for the emulator (after running 'adb reverse tcp:8080 tcp:8080')
+    final Uri url = Uri.parse('https://toniest-wilda-unfabulously.ngrok-free.dev/oauth2/authorization/facebook');
 
     if (await canLaunchUrl(url)) {
       await launchUrl(url, mode: LaunchMode.externalApplication);
@@ -175,21 +189,17 @@ class _LoginScreenState extends State<LoginScreen> {
 
                   // Social Logins (Placeholder functionality)
                   _buildSocialLoginButton(
-                      'Login with Google',
-                      'assets/images/google_logo.png', // You'll need to add this asset
-                      isDarkMode,
-                      _loginWithGoogle,
+                    'Login with Google',
+                    'assets/images/google_logo.png', // You'll need to add this asset
+                    isDarkMode,
+                    _loginWithGoogle,
                   ),
                   const SizedBox(height: 16),
                   _buildSocialLoginButton(
-                      'Login with Facebook',
-                      'assets/images/facebook_logo.png', // You'll need to add this asset
-                      isDarkMode,
-                      () {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Facebook login not implemented.')),
-                        );
-                      }
+                    'Login with Facebook',
+                    'assets/images/facebook_logo.png', // You'll need to add this asset
+                    isDarkMode,
+                    _loginWithFacebook,
                   ),
 
                   const SizedBox(height: 48),
@@ -230,4 +240,3 @@ class _LoginScreenState extends State<LoginScreen> {
 
 
 }
-

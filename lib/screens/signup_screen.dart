@@ -163,8 +163,8 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 _isLoading
                     ? const Center(child: CircularProgressIndicator())
                     : ElevatedButton(
-                        onPressed: _signUp,
-                        child: const Row(
+                  onPressed: _signUp,
+                  child: const Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text('SIGN UP'),
@@ -172,7 +172,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       Icon(Icons.arrow_forward),
                     ],
                   ),
-                      ),
+                ),
                 const SizedBox(height: 32),
 
                 // OR Divider
