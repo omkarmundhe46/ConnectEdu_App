@@ -8,7 +8,7 @@
   
     // Use 10.0.2.2 for the Android Emulator to connect to localhost on your machine.
     // For a real device, you must use your computer's network IP address.
-    static const String _baseUrl = kIsWeb ? 'http://localhost:8080' : 'http://10.0.2.2:8080';
+    static const String _baseUrl = kIsWeb ? 'http://localhost:8080' : 'http://10.82.198.92:8080';
   
     ApiService(this._secureStorageService) : _dio = Dio(BaseOptions(baseUrl: _baseUrl)) {
       _dio.interceptors.add(

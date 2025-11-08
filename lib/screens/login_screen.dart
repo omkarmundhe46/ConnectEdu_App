@@ -94,13 +94,15 @@ class _LoginScreenState extends State<LoginScreen> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   // App Logo (You can replace this with your actual logo asset)
-                  const Icon(Icons.school, size: 80, color: Color(0xFF4A55A2)),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'EventHub', // As per your design
-                    style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
-                    textAlign: TextAlign.center,
+                  Image.asset(
+                    Theme.of(context).brightness == Brightness.dark
+                        ? 'assets/images/logo2.png' // Light logo for dark mode
+                        : 'assets/images/logo1.png', // Dark logo for light mode
+                    width: 130,
+                    height: 130,
+                    fit: BoxFit.contain,
                   ),
+
                   const SizedBox(height: 48),
                   const Text(
                     'Sign in',
