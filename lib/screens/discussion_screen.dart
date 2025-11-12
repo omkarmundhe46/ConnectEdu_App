@@ -9,6 +9,7 @@ import 'package:connectedu_app/models/user.dart';
 import 'package:connectedu_app/repositories/discussion_repository.dart';
 import 'package:connectedu_app/services/api_service.dart';
 import 'package:connectedu_app/services/secure_storage_service.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:image_picker/image_picker.dart';
@@ -91,6 +92,44 @@ class _DiscussionScreenState extends State<DiscussionScreen> {
         _isConnecting = false;
         _connectionError = "Failed to load chat: ${e.toString()}";
       });
+    }
+  }
+
+  Future<void> _sendFile() async {
+    final FilePickerResult? result = await FilePicker.platform.pickFiles();
+    if (result == null) return; // User canceled the picker
+
+    final PlatformFile platformFile = result.files.first;
+    final File file = File(platformFile.path!);
+
+    setState(() { _isUploading = true; });
+
+    try {
+      // 1. Upload the file to S3
+      final fileUrl = await context.read<DiscussionRepository>().uploadFile(file);
+
+      // 2. Send the file message via WebSocket
+      final message = {
+        'content': platformFile.name, // Send the original filename as the content
+        'fileUrl': fileUrl,
+        'messageType': 'FILE', // Use the 'FILE' type
+      };
+
+      _stompClient?.send(
+        destination: '/app/chat.sendMessage/${widget.eventId}',
+        body: jsonEncode(message),
+      );
+
+    } catch (e) {
+      if(mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to send file: $e'), backgroundColor: Colors.red),
+        );
+      }
+    } finally {
+      if(mounted) {
+        setState(() { _isUploading = false; });
+      }
     }
   }
 
@@ -316,9 +355,11 @@ class _DiscussionScreenState extends State<DiscussionScreen> {
               ),
             if (!isMe) const SizedBox(height: 4),
 
-            // Show Image or Text
+            // Show Image or Text or file
             if (message.messageType == 'IMAGE' && message.fileUrl != null)
               _buildImageMessage(message.fileUrl!)
+            else if (message.messageType == 'FILE' && message.fileUrl != null)
+              _buildFileMessage(message.content) // 'content' holds the filename
             else
               Text(
                 message.content,
@@ -337,6 +378,32 @@ class _DiscussionScreenState extends State<DiscussionScreen> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildFileMessage(String filename) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.black.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.insert_drive_file, color: Colors.white.withOpacity(0.8)),
+          const SizedBox(width: 8),
+          Flexible(
+            child: Text(
+              filename,
+              style: const TextStyle(
+                color: Colors.white,
+                decoration: TextDecoration.underline,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -396,6 +463,11 @@ class _DiscussionScreenState extends State<DiscussionScreen> {
       child: SafeArea(
         child: Row(
           children: [
+            IconButton(
+              // Attach File Button
+              icon: Icon(Icons.attach_file, color: Theme.of(context).hintColor),
+              onPressed: _isUploading ? null : _sendFile,
+            ),
             // Attach Image Button
             IconButton(
               icon: Icon(Icons.image_outlined, color: Theme.of(context).hintColor),

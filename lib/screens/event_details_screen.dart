@@ -51,7 +51,13 @@ class EventDetailsScreen extends StatelessWidget {
         builder: (context, state) {
 
           // Define variables inside the builder
+          // 1. Check if the user is a listed member
           final bool isClubMember = (state is EventDetailLoaded) ? state.isClubMember : false;
+          // 2. Check if the user is the admin of THIS club
+          final bool isClubAdmin = (currentUser.role == 'CLUB_ADMIN' && currentUser.managedClubId == club.id);
+          // 3. Combine the checks
+          final bool canChat = isClubMember || isClubAdmin;
+          // 4. Check if event is upcoming
           final bool isEventUpcoming = event.status == 'UPCOMING';
 
           return Scaffold(
@@ -63,19 +69,18 @@ class EventDetailsScreen extends StatelessWidget {
             ),
             bottomNavigationBar: _buildBottomButton(context),
             // Now these variables are defined
-            floatingActionButton: (isClubMember && isEventUpcoming)
+            floatingActionButton: (canChat && isEventUpcoming)
                 ? FloatingActionButton(
               onPressed: () {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    // We must provide the DiscussionRepository here
                     builder: (_) => RepositoryProvider(
                       create: (context) => DiscussionRepository(context.read<ApiService>()),
                       child: DiscussionScreen(
                         eventId: event.id,
                         eventName: event.name,
-                        clubId: club.id, // <-- ADD THE clubId HERE
+                        clubId: club.id,
                       ),
                     ),
                   ),

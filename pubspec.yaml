@@ -30,6 +30,8 @@ dependencies:
 
   stomp_dart_client: ^1.0.1
 
+  file_picker: ^8.0.3
+
   jwt_decoder: ^2.0.1
 
   equatable: ^2.0.5
