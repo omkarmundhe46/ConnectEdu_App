@@ -5,10 +5,14 @@
   class ApiService {
     final Dio _dio;
     final SecureStorageService _secureStorageService;
-  
-    // Use 10.0.2.2 for the Android Emulator to connect to localhost on your machine.
-    // For a real device, you must use your computer's network IP address.
-    static const String _baseUrl = kIsWeb ? 'http://localhost:8080' : 'http://10.82.198.92:8080';
+
+
+    static const String _baseUrl = kIsWeb ? 'http://localhost:8080' : 'http://10.255.7.92:8080';   // without docker on localhost
+    // static const String _baseUrl = 'https://toniest-wilda-unfabulously.ngrok-free.dev';             //  with docker
+
+    // static const String _baseUrl = 'http://10.82.198.92:8080'; // <-- Use YOUR phone address
+
+    static const String websocketUrl = kIsWeb ? 'ws://localhost:8080/ws' : 'ws://10.255.7.92:8080/ws';
   
     ApiService(this._secureStorageService) : _dio = Dio(BaseOptions(baseUrl: _baseUrl)) {
       _dio.interceptors.add(

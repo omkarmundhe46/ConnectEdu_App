@@ -28,6 +28,8 @@ dependencies:
 
   flutter_secure_storage: ^9.0.0
 
+  stomp_dart_client: ^1.0.1
+
   jwt_decoder: ^2.0.1
 
   equatable: ^2.0.5

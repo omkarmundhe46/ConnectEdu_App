@@ -5,6 +5,7 @@ import 'package:connectedu_app/bloc/home_bloc.dart';
 import 'package:connectedu_app/repositories/auth_repository.dart';
 import 'package:connectedu_app/repositories/certificate-service.dart';
 import 'package:connectedu_app/repositories/club_repository.dart';
+import 'package:connectedu_app/repositories/discussion_repository.dart';
 import 'package:connectedu_app/repositories/event_repository.dart';
 import 'package:connectedu_app/repositories/notification_repository.dart';
 import 'package:connectedu_app/screens/auth_navigator.dart';
@@ -24,6 +25,7 @@ void main() {
   final EventRepository eventRepository = EventRepository(apiService);
   final CertificateRepository certificateRepository = CertificateRepository(apiService);
   final NotificationRepository notificationRepository = NotificationRepository(apiService);
+  final DiscussionRepository discussionRepository = DiscussionRepository(apiService);
 
   runApp(
     MultiRepositoryProvider(
@@ -35,6 +37,7 @@ void main() {
         RepositoryProvider.value(value: secureStorageService),
         RepositoryProvider.value(value: certificateRepository),
         RepositoryProvider.value(value: notificationRepository),
+        RepositoryProvider.value(value: discussionRepository),
       ],
       child: BlocProvider(
         create: (context) => AuthBloc(context.read<AuthRepository>())..add(AppStarted()),

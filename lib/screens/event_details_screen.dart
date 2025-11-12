@@ -6,8 +6,11 @@ import 'package:connectedu_app/models/event.dart';
 import 'package:connectedu_app/models/user.dart';
 import 'package:connectedu_app/repositories/certificate-service.dart';
 import 'package:connectedu_app/repositories/club_repository.dart';
+import 'package:connectedu_app/repositories/discussion_repository.dart';
 import 'package:connectedu_app/repositories/event_repository.dart';
+import 'package:connectedu_app/screens/discussion_screen.dart';
 import 'package:connectedu_app/screens/registration_form_screen.dart';
+import 'package:connectedu_app/services/api_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
@@ -44,14 +47,46 @@ class EventDetailsScreen extends StatelessWidget {
         eventId: event.id,
         userId: currentUser.id,
       )),
-      child: Scaffold(
-        body: CustomScrollView(
-          slivers: <Widget>[
-            _buildSliverAppBar(context),
-            _buildSliverContent(context),
-          ],
-        ),
-        bottomNavigationBar: _buildBottomButton(context),
+      child: BlocBuilder<EventDetailBloc, EventDetailState>(
+        builder: (context, state) {
+
+          // Define variables inside the builder
+          final bool isClubMember = (state is EventDetailLoaded) ? state.isClubMember : false;
+          final bool isEventUpcoming = event.status == 'UPCOMING';
+
+          return Scaffold(
+            body: CustomScrollView(
+              slivers: <Widget>[
+                _buildSliverAppBar(context),
+                _buildSliverContent(context),
+              ],
+            ),
+            bottomNavigationBar: _buildBottomButton(context),
+            // Now these variables are defined
+            floatingActionButton: (isClubMember && isEventUpcoming)
+                ? FloatingActionButton(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    // We must provide the DiscussionRepository here
+                    builder: (_) => RepositoryProvider(
+                      create: (context) => DiscussionRepository(context.read<ApiService>()),
+                      child: DiscussionScreen(
+                        eventId: event.id,
+                        eventName: event.name,
+                        clubId: club.id, // <-- ADD THE clubId HERE
+                      ),
+                    ),
+                  ),
+                );
+              },
+              tooltip: 'Event Discussion',
+              child: const Icon(Icons.chat_bubble_outline),
+            )
+                : null,
+          );
+        },
       ),
     );
   }
