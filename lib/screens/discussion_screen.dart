@@ -19,6 +19,7 @@ import 'package:stomp_dart_client/stomp_config.dart';
 import 'package:stomp_dart_client/stomp_frame.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:stomp_dart_client/stomp_handler.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class DiscussionScreen extends StatefulWidget {
   final int eventId;
@@ -359,7 +360,7 @@ class _DiscussionScreenState extends State<DiscussionScreen> {
             if (message.messageType == 'IMAGE' && message.fileUrl != null)
               _buildImageMessage(message.fileUrl!)
             else if (message.messageType == 'FILE' && message.fileUrl != null)
-              _buildFileMessage(message.content) // 'content' holds the filename
+              _buildFileMessage(message.content, message.fileUrl!) // 'content' holds the filename
             else
               Text(
                 message.content,
@@ -382,51 +383,72 @@ class _DiscussionScreenState extends State<DiscussionScreen> {
     );
   }
 
-  Widget _buildFileMessage(String filename) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.insert_drive_file, color: Colors.white.withOpacity(0.8)),
-          const SizedBox(width: 8),
-          Flexible(
-            child: Text(
-              filename,
-              style: const TextStyle(
-                color: Colors.white,
-                decoration: TextDecoration.underline,
+  Widget _buildFileMessage(String filename, String url) {
+    // Wrap the file bubble in an InkWell to make it tappable
+    return InkWell(
+      onTap: () => _launchFileUrl(url),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Colors.black.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.insert_drive_file, color: Colors.white.withOpacity(0.8)),
+            const SizedBox(width: 8),
+            Flexible(
+              child: Text(
+                filename,
+                style: const TextStyle(
+                  color: Colors.white,
+                  decoration: TextDecoration.underline, // Make it look like a link
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildImageMessage(String url) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(8.0),
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(
-          maxHeight: 300,
-          maxWidth: 250,
-        ),
-        child: CachedNetworkImage(
-          imageUrl: url,
-          placeholder: (context, url) => const SizedBox(
-            width: 200,
-            height: 200,
-            child: Center(child: CircularProgressIndicator()),
+    // Wrap the image in an InkWell to make it tappable
+    return InkWell(
+      onTap: () => _launchFileUrl(url),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(8.0),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(
+            maxHeight: 300,
+            maxWidth: 250,
           ),
-          errorWidget: (context, url, error) => const Icon(Icons.error, color: Colors.red),
+          child: CachedNetworkImage(
+            imageUrl: url,
+            placeholder: (context, url) => const SizedBox(
+              width: 200,
+              height: 200,
+              child: Center(child: CircularProgressIndicator()),
+            ),
+            errorWidget: (context, url, error) => const Icon(Icons.error, color: Colors.red),
+            // The constraints are now on the parent widget
+          ),
         ),
       ),
     );
+  }
+
+  Future<void> _launchFileUrl(String url) async {
+    final Uri uri = Uri.parse(url);
+    // Use externalApplication mode to let the OS handle it (e.g., open Gallery, Browser, or PDF viewer)
+    if (!await launchUrl(uri, mode: LaunchMode.externalApplication)) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not open file: $url'), backgroundColor: Colors.red),
+        );
+      }
+    }
   }
 
   Widget _buildTextInput() {
