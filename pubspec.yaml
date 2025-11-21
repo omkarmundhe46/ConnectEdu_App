@@ -62,22 +62,3 @@ flutter:
   uses-material-design: true
   assets:
     - assets/images/
-
-flutter_native_splash:
-  # Light theme splash
-  color: "#FFFFFF"
-  image: assets/images/logo1.png
-
-  # Dark theme splash
-  color_dark: "#000000"
-  image_dark: assets/images/logo2.png
-
-  android_gravity: center
-  ios_content_mode: scaleAspectFit
-  web_image_mode: contain
-
-  # Android 12+ configuration
-  android_12:
-    image: assets/images/logo1.png
-    image_dark: assets/images/logo2.png
-    icon_background_color: "#FFFFFF"
