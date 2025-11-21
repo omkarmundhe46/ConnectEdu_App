@@ -1,4 +1,5 @@
 import 'package:connectedu_app/screens/verification_screen.dart';
+import 'package:connectedu_app/services/secure_storage_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:connectedu_app/bloc/auth_bloc.dart';
@@ -15,15 +16,45 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  bool _isPasswordVisible = false;
   bool _rememberMe = false;
+
+   //  for remember me logic
+  @override
+  void initState() {
+    super.initState();
+    // --- 1. LOAD SAVED EMAIL ON START ---
+    _loadSavedEmail();
+  }
+
+  Future<void> _loadSavedEmail() async {
+    final storage = context.read<SecureStorageService>();
+    final savedEmail = await storage.getEmail();
+    if (savedEmail != null && savedEmail.isNotEmpty) {
+      setState(() {
+        _emailController.text = savedEmail;
+        _rememberMe = true; // Check the box if we found an email
+      });
+    }
+  }
 
   void _login() {
     final email = _emailController.text;
     final password = _passwordController.text;
+
     if (email.isNotEmpty && password.isNotEmpty) {
+      // --- 2. HANDLE REMEMBER ME LOGIC ---
+      final storage = context.read<SecureStorageService>();
+      if (_rememberMe) {
+        storage.saveEmail(email);
+      } else {
+        storage.deleteEmail();
+      }
+
       context.read<AuthBloc>().add(LoggedIn(email: email, password: password));
     }
   }
+
 
   Future<void> _loginWithGoogle() async {
     // This is the URL of YOUR backend, not Google's
@@ -33,9 +64,11 @@ class _LoginScreenState extends State<LoginScreen> {
     if (await canLaunchUrl(url)) {
       await launchUrl(url, mode: LaunchMode.externalApplication);
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Could not launch browser. Please try again.'), backgroundColor: Colors.red),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not launch browser. Please try again.'), backgroundColor: Colors.red),
+        );
+      }
     }
   }
 
@@ -46,9 +79,11 @@ class _LoginScreenState extends State<LoginScreen> {
     if (await canLaunchUrl(url)) {
       await launchUrl(url, mode: LaunchMode.externalApplication);
     } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Could not launch browser. Please try again.'), backgroundColor: Colors.red),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not launch browser. Please try again.'), backgroundColor: Colors.red),
+        );
+      }
     }
   }
 
@@ -124,12 +159,23 @@ class _LoginScreenState extends State<LoginScreen> {
                   // Password Field
                   TextField(
                     controller: _passwordController,
-                    decoration: const InputDecoration(
+                    obscureText: !_isPasswordVisible,
+                    decoration: InputDecoration(
                       hintText: 'Your password',
-                      prefixIcon: Icon(Icons.lock_outline),
-                      suffixIcon: Icon(Icons.visibility_off_outlined),
+                      prefixIcon: const Icon(Icons.lock_outline),
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          _isPasswordVisible
+                              ? Icons.visibility_outlined
+                              : Icons.visibility_off_outlined,
+                        ),
+                        onPressed: () {
+                          setState(() {
+                            _isPasswordVisible = !_isPasswordVisible;
+                          });
+                        },
+                      ),
                     ),
-                    obscureText: true,
                   ),
                   const SizedBox(height: 16),
 
