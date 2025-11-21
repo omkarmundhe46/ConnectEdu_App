@@ -1,3 +1,4 @@
+import 'package:connectedu_app/dto/club_member_dto.dart';
 import 'package:connectedu_app/models/club.dart';
 import 'package:connectedu_app/services/api_service.dart';
 import 'package:flutter/foundation.dart';
@@ -87,6 +88,48 @@ class ClubRepository {
       debugPrint('Error checking membership: $e');
       // Assume not a member if the check fails for any reason
       return false;
+    }
+  }
+
+    // add club member
+  Future<void> addMember(int clubId, String userEmail) async {
+    try {
+      await _apiService.dio.post(
+        '/api/clubs/$clubId/members',
+        data: {
+          'userEmail': userEmail,
+          'role': 'MEMBER', // Default role
+        },
+      );
+      debugPrint('Member added successfully to club $clubId');
+    } on DioException catch (e) {
+      debugPrint('Failed to add member: ${e.response?.data ?? e.message}');
+      // Extract a nice error message if possible
+      String errorMsg = e.response?.data?['message'] ?? 'Failed to add member.';
+      throw Exception(errorMsg);
+    } catch (e) {
+      debugPrint('Failed to add member: $e');
+      throw Exception('Failed to add member.');
+    }
+  }
+
+  Future<List<ClubMemberDto>> getClubMembers(int clubId) async {
+    try {
+      final response = await _apiService.dio.get('/api/clubs/$clubId/members');
+      final data = response.data as List;
+      // Map JSON to ClubMemberDto objects
+      return data.map((json) => ClubMemberDto.fromJson(json)).toList();
+    } catch (e) {
+      debugPrint('Failed to fetch members: $e');
+      throw Exception('Failed to fetch members.');
+    }
+  }
+
+  Future<void> removeMember(int clubId, int userId) async {
+    try {
+      await _apiService.dio.delete('/api/clubs/$clubId/members/$userId');
+    } catch (e) {
+      throw Exception('Failed to remove member: $e');
     }
   }
 }
