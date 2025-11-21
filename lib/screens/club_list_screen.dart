@@ -3,6 +3,7 @@ import 'package:connectedu_app/models/club.dart';
 import 'package:connectedu_app/models/user.dart';
 import 'package:connectedu_app/repositories/club_repository.dart';
 import 'package:connectedu_app/repositories/event_repository.dart';
+import 'package:connectedu_app/screens/ManageBannersScreen.dart';
 import 'package:connectedu_app/screens/club_edit_screen.dart';
 import 'package:connectedu_app/screens/event_list_screen.dart';
 import 'package:connectedu_app/screens/add_member_dialog.dart';
@@ -15,11 +16,37 @@ import 'package:cached_network_image/cached_network_image.dart';
 enum ClubAdminAction { update, delete }
 
 // Enum for Club Admin actions
-enum ClubMemberAction { addMember, manageMembers }
+enum ClubMemberAction { addMember, manageMembers, manageBanners }
 
-class ClubListScreen extends StatelessWidget {
+class ClubListScreen extends StatefulWidget {
   final User currentUser;
   const ClubListScreen({super.key, required this.currentUser});
+
+  @override
+  State<ClubListScreen> createState() => _ClubListScreenState();
+}
+
+class _ClubListScreenState extends State<ClubListScreen> {
+  // Store the list of clubs the user is a member of
+  List<int> _myClubIds = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadMyMemberships();
+  }
+
+  Future<void> _loadMyMemberships() async {
+    // Only fetch if the user is a CLUB_MEMBER
+    if (widget.currentUser.role == 'CLUB_MEMBER') {
+      final ids = await context.read<ClubRepository>().getMyClubIds();
+      if (mounted) {
+        setState(() {
+          _myClubIds = ids;
+        });
+      }
+    }
+  }
 
   // Helper to show confirmation dialog for deletion
   Future<bool> _showDeleteConfirmationDialog(BuildContext context, Club club) async {
@@ -47,7 +74,7 @@ class ClubListScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bool isCollegeAdmin = currentUser.role == 'COLLEGE_ADMIN';
+    final bool isCollegeAdmin = widget.currentUser.role == 'COLLEGE_ADMIN';
 
     return BlocProvider(
       create: (context) => ClubListBloc(
@@ -186,7 +213,10 @@ class ClubListScreen extends StatelessWidget {
     final clubListBloc = BlocProvider.of<ClubListBloc>(context);
 
     // Check if user is Club Admin for THIS specific club
-    final bool isClubAdmin = currentUser.role == 'CLUB_ADMIN' && currentUser.managedClubId == club.id;
+    final bool isClubAdmin = widget.currentUser.role == 'CLUB_ADMIN' && widget.currentUser.managedClubId == club.id;
+
+    // Check if user is a Member of THIS specific club using the fetched list
+    final bool isMemberOfThisClub = _myClubIds.contains(club.id);
 
     return Card(
       margin: const EdgeInsets.only(bottom: 16.0),
@@ -199,7 +229,7 @@ class ClubListScreen extends StatelessWidget {
           Navigator.push(
             context,
             MaterialPageRoute(
-              builder: (_) => EventListScreen(club: club, currentUser: currentUser),
+              builder: (_) => EventListScreen(club: club, currentUser: widget.currentUser),
             ),
           );
         },
@@ -309,23 +339,23 @@ class ClubListScreen extends StatelessWidget {
                           context: context,
                           builder: (ctx) => AddMemberDialog(clubId: club.id),
                         );
-
                         if (success == true && context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(content: Text('Member added successfully!'), backgroundColor: Colors.green),
                           );
                         }
                       } else if (action == ClubMemberAction.manageMembers) {
-                        // Navigate to the new management screen
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                              builder: (_) => RepositoryProvider.value(
-                                value: context.read<ClubRepository>(),
-                                child: MemberManagementScreen(club: club),
-                              )
+                            builder: (_) => RepositoryProvider.value(
+                              value: context.read<ClubRepository>(),
+                              child: MemberManagementScreen(club: club),
+                            ),
                           ),
                         );
+                      } else if (action == ClubMemberAction.manageBanners) {
+                        Navigator.push(context, MaterialPageRoute(builder: (_) => ManageBannersScreen(clubId: club.id)));
                       }
                     },
                     itemBuilder: (BuildContext context) => <PopupMenuEntry<ClubMemberAction>>[
@@ -345,9 +375,43 @@ class ClubListScreen extends StatelessWidget {
                           contentPadding: EdgeInsets.zero,
                         ),
                       ),
+                      const PopupMenuItem<ClubMemberAction>(
+                        value: ClubMemberAction.manageBanners,
+                        child: ListTile(
+                          leading: Icon(Icons.image),
+                          title: Text('Manage Banners'),
+                          contentPadding: EdgeInsets.zero,
+                        ),
+                      ),
                     ],
                   ),
-                ),
+                )
+
+              // --- 3. CLUB MEMBER MENU (Corrected) ---
+              // Show only if user is a member of THIS specific club
+              else if (isMemberOfThisClub)
+                  SizedBox(
+                    width: 40,
+                    child: PopupMenuButton<ClubMemberAction>(
+                      icon: const Icon(Icons.more_vert),
+                      tooltip: 'Member Actions',
+                      onSelected: (ClubMemberAction action) async {
+                        if (action == ClubMemberAction.manageBanners) {
+                          Navigator.push(context, MaterialPageRoute(builder: (_) => ManageBannersScreen(clubId: club.id)));
+                        }
+                      },
+                      itemBuilder: (BuildContext context) => <PopupMenuEntry<ClubMemberAction>>[
+                        const PopupMenuItem<ClubMemberAction>(
+                          value: ClubMemberAction.manageBanners,
+                          child: ListTile(
+                            leading: Icon(Icons.image),
+                            title: Text('Manage Banners'),
+                            contentPadding: EdgeInsets.zero,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
             ],
           ),
         ),

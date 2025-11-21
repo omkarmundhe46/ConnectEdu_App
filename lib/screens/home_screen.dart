@@ -1,17 +1,21 @@
 
 
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:carousel_slider_plus/carousel_slider_plus.dart';
 import 'package:connectedu_app/bloc/auth_bloc.dart';
 import 'package:connectedu_app/bloc/club_list_bloc.dart';
 import 'package:connectedu_app/bloc/event_list_bloc.dart';
 import 'package:connectedu_app/bloc/home_bloc.dart';
 import 'package:connectedu_app/bloc/notification_bloc/notification_bloc.dart';
+import 'package:connectedu_app/models/banner_model.dart';
 import 'package:connectedu_app/models/club.dart';
 import 'package:connectedu_app/models/event.dart';
 import 'package:connectedu_app/models/user.dart';
+import 'package:connectedu_app/repositories/banner_repository.dart';
 import 'package:connectedu_app/repositories/club_repository.dart';
 import 'package:connectedu_app/repositories/event_repository.dart';
 import 'package:connectedu_app/repositories/notification_repository.dart';
+import 'package:connectedu_app/screens/ManageBannersScreen.dart';
 import 'package:connectedu_app/screens/club_edit_screen.dart';
 import 'package:connectedu_app/screens/club_list_screen.dart';
 import 'package:connectedu_app/screens/event_details_screen.dart';
@@ -23,6 +27,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class HomeScreen extends StatelessWidget {
   final User user;
@@ -60,7 +65,20 @@ class HomeScreen extends StatelessWidget {
         ),
         centerTitle: false,
         actions: [
+          if (user.role == 'COLLEGE_ADMIN')
+            IconButton(
+              icon: const Icon(Icons.campaign),
+              tooltip: 'Manage Banners',
+              onPressed: () {
+                // Navigate to ManageBannersScreen in College Admin mode (clubId: null)
+                Navigator.push(context, MaterialPageRoute(builder: (_) => const ManageBannersScreen(clubId: null)));
+              },
+            ),
+
+          // 2. Keep your existing search button
           IconButton(icon: const Icon(Icons.search), onPressed: () {}, tooltip: 'Search'),
+
+          // 3. Keep your existing logout button
           IconButton(
             icon: const Icon(Icons.logout),
             tooltip: 'Logout',
@@ -340,21 +358,73 @@ class HomeScreen extends StatelessWidget {
   }
 
   Widget _buildBannerSection(BuildContext context) {
-    final List<Widget> banners = [
-      _buildBannerCard(context, 'Campus Event Highlights', Colors.purpleAccent.withOpacity(0.7)),
-      _buildBannerCard(context, 'Last Hackathon Winners', Colors.lightBlueAccent.withOpacity(0.7)),
-      _buildBannerCard(context, 'Upcoming Workshop Ads', Colors.orangeAccent.withOpacity(0.7)),
-    ];
-    final PageController pageController = PageController(viewportFraction: 0.9, initialPage: 1000);
-    return SizedBox(
-      height: 150,
-      child: PageView.builder(
-        controller: pageController,
-        itemCount: banners.length * 2000,
-        itemBuilder: (context, index) => banners[index % banners.length],
-      ),
+    return FutureBuilder<List<BannerModel>>(
+      future: context.read<BannerRepository>().getActiveBanners(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const SizedBox(height: 180, child: Center(child: CircularProgressIndicator()));
+        }
+
+        final banners = snapshot.data ?? [];
+        if (banners.isEmpty) {
+          // Show a default placeholder if no banners exist
+          return _buildBannerCard(context, 'Welcome to ConnectEdu', Colors.purpleAccent.withOpacity(0.7));
+        }
+
+        return CarouselSlider(
+          options: CarouselOptions(
+            height: 180.0,
+            autoPlay: true,
+            autoPlayInterval: const Duration(seconds: 4),
+            enlargeCenterPage: true,
+            viewportFraction: 0.9,
+          ),
+          items: banners.map((banner) {
+            return Builder(
+              builder: (BuildContext context) {
+                return InkWell(
+                  onTap: () async {
+                    if (banner.linkUrl != null) {
+                      final Uri url = Uri.parse(banner.linkUrl!);
+                      if (await canLaunchUrl(url)) await launchUrl(url);
+                    }
+                  },
+                  child: Container(
+                    width: MediaQuery.of(context).size.width,
+                    margin: const EdgeInsets.symmetric(horizontal: 5.0),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(16),
+                      image: DecorationImage(
+                        image: CachedNetworkImageProvider(banner.imageUrl),
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                    child: Container( // Gradient overlay for text readability
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(16),
+                        gradient: LinearGradient(
+                          begin: Alignment.bottomCenter,
+                          end: Alignment.topCenter,
+                          colors: [Colors.black.withOpacity(0.7), Colors.transparent],
+                        ),
+                      ),
+                      padding: const EdgeInsets.all(16),
+                      alignment: Alignment.bottomLeft,
+                      child: Text(
+                        banner.title,
+                        style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ),
+                );
+              },
+            );
+          }).toList(),
+        );
+      },
     );
   }
+
 
   Widget _buildBannerCard(BuildContext context, String text, Color color) {
     return Card(

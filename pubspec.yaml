@@ -48,7 +48,10 @@ dependencies:
 
   url_launcher: ^6.2.1
 
+  carousel_slider_plus: ^6.0.0
+
   app_links: ^6.4.1
+
   flutter_native_splash: ^2.4.7
 
 dev_dependencies:

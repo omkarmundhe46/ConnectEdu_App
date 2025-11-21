@@ -22,6 +22,8 @@ class ClubRepository {
     }
   }
 
+
+
   Future<Club> createClub(String name, String description, String adminEmail, String? logoUrl) async {
     try {
       final response = await _apiService.dio.post(
@@ -40,6 +42,17 @@ class ClubRepository {
     } catch (e) {
       debugPrint('Failed to create club: $e');
       throw Exception('Failed to create club.');
+    }
+  }
+
+  Future<List<int>> getMyClubIds() async {
+    try {
+      final response = await _apiService.dio.get('/api/clubs/my-memberships');
+      final data = response.data as List;
+      return data.map((id) => id as int).toList();
+    } catch (e) {
+      debugPrint('Failed to fetch my clubs: $e');
+      return []; // Return empty list on error
     }
   }
 
