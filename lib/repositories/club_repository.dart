@@ -45,6 +45,20 @@ class ClubRepository {
     }
   }
 
+  Future<List<Club>> searchClubs(String query) async {
+    try {
+      final response = await _apiService.dio.get(
+        '/api/clubs/search',
+        queryParameters: {'query': query},
+      );
+      final data = response.data as List;
+      return data.map((clubJson) => Club.fromJson(clubJson)).toList();
+    } catch (e) {
+      debugPrint('Failed to search clubs: $e');
+      return []; // Return empty list on error to avoid breaking UI
+    }
+  }
+
   Future<List<int>> getMyClubIds() async {
     try {
       final response = await _apiService.dio.get('/api/clubs/my-memberships');

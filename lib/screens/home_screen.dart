@@ -22,6 +22,7 @@ import 'package:connectedu_app/screens/club_list_screen.dart';
 import 'package:connectedu_app/screens/event_details_screen.dart';
 import 'package:connectedu_app/screens/event_edit_screen.dart';
 import 'package:connectedu_app/screens/event_list_screen.dart';
+import 'package:connectedu_app/screens/global_search_delegate.dart';
 import 'package:connectedu_app/screens/notification_screen.dart';
 import 'package:connectedu_app/screens/profile_screen.dart';
 import 'package:flutter/cupertino.dart';
@@ -77,7 +78,20 @@ class HomeScreen extends StatelessWidget {
             ),
 
           // 2. Keep your existing search button
-          IconButton(icon: const Icon(Icons.search), onPressed: () {}, tooltip: 'Search'),
+          IconButton(
+            icon: const Icon(Icons.search),
+            tooltip: 'Search',
+            onPressed: () {
+              showSearch(
+                context: context,
+                delegate: GlobalSearchDelegate(
+                  clubRepository: context.read<ClubRepository>(),
+                  eventRepository: context.read<EventRepository>(),
+                  currentUser: user,
+                ),
+              );
+            },
+          ),
 
           // 3. Keep your existing logout button
           IconButton(

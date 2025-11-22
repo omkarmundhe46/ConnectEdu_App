@@ -28,6 +28,20 @@ class EventRepository {
     }
   }
 
+  Future<List<Event>> searchEvents(String query) async {
+    try {
+      final response = await _apiService.dio.get(
+        '/api/events/search',
+        queryParameters: {'query': query},
+      );
+      final data = response.data as List;
+      return data.map((eventJson) => Event.fromJson(eventJson)).toList();
+    } catch (e) {
+      debugPrint('Failed to search events: $e');
+      return [];
+    }
+  }
+
   Future<List<Event>> getEventsByClub(int clubId) async {
     try {
       final response = await _apiService.dio.get('/api/clubs/$clubId/events');
