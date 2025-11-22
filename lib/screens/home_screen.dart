@@ -15,6 +15,7 @@ import 'package:connectedu_app/repositories/banner_repository.dart';
 import 'package:connectedu_app/repositories/club_repository.dart';
 import 'package:connectedu_app/repositories/event_repository.dart';
 import 'package:connectedu_app/repositories/notification_repository.dart';
+import 'package:connectedu_app/screens/AllUpcomingEventsScreen.dart';
 import 'package:connectedu_app/screens/ManageBannersScreen.dart';
 import 'package:connectedu_app/screens/club_edit_screen.dart';
 import 'package:connectedu_app/screens/club_list_screen.dart';
@@ -145,7 +146,10 @@ class HomeScreen extends StatelessWidget {
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16.0),
                     child: _buildSectionHeader(context, 'Upcoming Events', () {
-                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Navigate to All Upcoming Events (Not Implemented)')));
+                      Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const AllUpcomingEventsScreen())
+                      );
                     }),
                   ),
                   const SizedBox(height: 12),

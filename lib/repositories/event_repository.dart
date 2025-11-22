@@ -15,7 +15,8 @@ class EventRepository {
 
   Future<List<Event>> getAllUpcomingEvents() async {
     try {
-      final response = await _apiService.dio.get('/internal/api/events/upcoming');
+      // Use the new public endpoint we just enabled
+      final response = await _apiService.dio.get('/api/events/upcoming');
       final data = response.data as List;
       return data.map((eventJson) => Event.fromJson(eventJson)).toList();
     } on DioException catch (e) {
