@@ -1,3 +1,4 @@
+import 'package:connectedu_app/screens/forgot_password_screen.dart';
 import 'package:connectedu_app/screens/verification_screen.dart';
 import 'package:connectedu_app/services/secure_storage_service.dart';
 import 'package:flutter/material.dart';
@@ -194,7 +195,12 @@ class _LoginScreenState extends State<LoginScreen> {
                         ],
                       ),
                       TextButton(
-                        onPressed: () {},
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => const ForgotPasswordScreen()),
+                          );
+                        },
                         child: const Text('Forgot Password?'),
                       ),
                     ],

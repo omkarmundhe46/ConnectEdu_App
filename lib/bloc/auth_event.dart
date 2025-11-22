@@ -31,6 +31,8 @@ class ProfileUpdated extends AuthEvent {
   List<Object?> get props => [phone, profileImageUrl];
 }
 
+
+
 class PasswordChanged extends AuthEvent {
   final String currentPassword;
   final String newPassword;

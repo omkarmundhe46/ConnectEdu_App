@@ -38,6 +38,76 @@ class AuthRepository {
       throw Exception(e.toString());
     }
   }
+  Future<void> verifyResetOtp({required String email, required String otp}) async {
+    try {
+      debugPrint('Verifying reset OTP...');
+      final response = await _apiService.dio.post(
+        '/auth/verify-reset-otp',
+        data: {'email': email, 'otp': otp},
+      );
+
+      if (response.statusCode == 200) {
+        debugPrint('OTP is valid.');
+      } else {
+        throw Exception('Invalid OTP.');
+      }
+    } on DioException catch (e) {
+      throw Exception(e.response?.data ?? 'Invalid OTP.');
+    } catch (e) {
+      throw Exception(e.toString());
+    }
+  }
+
+  Future<void> requestPasswordReset(String email) async {
+    try {
+      debugPrint('Requesting password reset for: $email');
+      final response = await _apiService.dio.post(
+        '/auth/forgot-password',
+        data: {'email': email},
+      );
+
+      if (response.statusCode == 200) {
+        debugPrint('Password reset OTP sent.');
+      } else {
+        throw Exception('Request failed: ${response.data}');
+      }
+    } on DioException catch (e) {
+      debugPrint('Reset request API error: ${e.response?.data ?? e.message}');
+      // Extract clean error message if possible
+      throw Exception(e.response?.data ?? 'Failed to send reset code.');
+    } catch (e) {
+      throw Exception(e.toString());
+    }
+  }
+
+  Future<void> resetPassword({
+    required String email,
+    required String otp,
+    required String newPassword,
+  }) async {
+    try {
+      debugPrint('Resetting password...');
+      final response = await _apiService.dio.post(
+        '/auth/reset-password-with-otp',
+        data: {
+          'email': email,
+          'otp': otp,
+          'newPassword': newPassword,
+        },
+      );
+
+      if (response.statusCode == 200) {
+        debugPrint('Password reset successful.');
+      } else {
+        throw Exception('Reset failed: ${response.data}');
+      }
+    } on DioException catch (e) {
+      debugPrint('Reset API error: ${e.response?.data ?? e.message}');
+      throw Exception(e.response?.data ?? 'Failed to reset password.');
+    } catch (e) {
+      throw Exception(e.toString());
+    }
+  }
 
   Future<User> loginWithToken(String token) async {
     try {
