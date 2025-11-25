@@ -1,5 +1,3 @@
-
-
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:carousel_slider_plus/carousel_slider_plus.dart';
 import 'package:connectedu_app/bloc/auth_bloc.dart';
@@ -23,6 +21,7 @@ import 'package:connectedu_app/screens/event_details_screen.dart';
 import 'package:connectedu_app/screens/event_edit_screen.dart';
 import 'package:connectedu_app/screens/event_list_screen.dart';
 import 'package:connectedu_app/screens/global_search_delegate.dart';
+import 'package:connectedu_app/screens/my_registrations.dart';
 import 'package:connectedu_app/screens/notification_screen.dart';
 import 'package:connectedu_app/screens/profile_screen.dart';
 import 'package:flutter/cupertino.dart';
@@ -47,7 +46,10 @@ class HomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bool showFab = user.role == 'COLLEGE_ADMIN' || user.role == 'CLUB_ADMIN';
+    // Logic to determine user roles
+    final bool isCollegeAdmin = user.role == 'COLLEGE_ADMIN';
+    final bool isClubAdmin = user.role == 'CLUB_ADMIN';
+    final bool isStudent = user.role == 'USER' || user.role == 'CLUB_MEMBER';
 
     return Scaffold(
       appBar: AppBar(
@@ -67,7 +69,7 @@ class HomeScreen extends StatelessWidget {
         ),
         centerTitle: false,
         actions: [
-          if (user.role == 'COLLEGE_ADMIN')
+          if (isCollegeAdmin)
             IconButton(
               icon: const Icon(Icons.campaign),
               tooltip: 'Manage Banners',
@@ -77,7 +79,6 @@ class HomeScreen extends StatelessWidget {
               },
             ),
 
-          // 2. Keep your existing search button
           IconButton(
             icon: const Icon(Icons.search),
             tooltip: 'Search',
@@ -93,7 +94,6 @@ class HomeScreen extends StatelessWidget {
             },
           ),
 
-          // 3. Keep your existing logout button
           IconButton(
             icon: const Icon(Icons.logout),
             tooltip: 'Logout',
@@ -235,73 +235,104 @@ class HomeScreen extends StatelessWidget {
           return const SizedBox.shrink();
         },
       ),
-      floatingActionButton: showFab ? FloatingActionButton(
+
+      // --- UPDATED FLOATING ACTION BUTTON LOGIC ---
+      floatingActionButton: _buildFloatingActionButton(context, isCollegeAdmin, isClubAdmin, isStudent),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+      bottomNavigationBar: _buildBottomNavBar(context),
+    );
+  }
+
+  // --- NEW HELPER METHOD FOR FAB ---
+  Widget? _buildFloatingActionButton(BuildContext context, bool isCollegeAdmin, bool isClubAdmin, bool isStudent) {
+    if (isCollegeAdmin) {
+      // College Admin: Create Club
+      return FloatingActionButton(
         onPressed: () async {
-          if (user.role == 'COLLEGE_ADMIN') {
-            final result = await Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => BlocProvider(
-                  create: (ctx) => ClubListBloc(
-                    clubRepository: context.read<ClubRepository>(),
-                    eventRepository: context.read<EventRepository>(),
-                  ),
-                  child: const ClubEditScreen(),
+          final result = await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => BlocProvider(
+                create: (ctx) => ClubListBloc(
+                  clubRepository: context.read<ClubRepository>(),
+                  eventRepository: context.read<EventRepository>(),
                 ),
+                child: const ClubEditScreen(),
               ),
-            );
-            if (result == true && context.mounted) {
-              context.read<HomeBloc>().add(LoadHomeData());
-            }
-
-          } else if (user.role == 'CLUB_ADMIN') {
-            final homeState = context.read<HomeBloc>().state;
-            Club? managedClub;
-            if (homeState is HomeLoaded && user.managedClubId != null) {
-              try {
-                managedClub = homeState.clubs.firstWhere((c) => c.id == user.managedClubId);
-              } catch (e) {
-                debugPrint("Managed club not found in HomeBloc state");
-              }
-            }
-
-            // --- THIS IS THE FIX ---
-            // Add a null check before navigating
-            if (managedClub != null && context.mounted) {
-              final Club club = managedClub; // promoted via the preceding null-check and assigned to non-nullable local
-              final result = await Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => BlocProvider(
-                    create: (ctx) => EventListBloc(
-                      eventRepository: context.read<EventRepository>(),
-                    ),
-                    child: EventEditScreen(club: club),
-                  ),
-                ),
-              );
-
-              if (result == true && context.mounted) {
-                context.read<HomeBloc>().add(LoadHomeData());
-              }
-            } else if (context.mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Could not find your managed club to create an event.'), backgroundColor: Colors.orange)
-              );
-            }
-            // --- END OF FIX ---
+            ),
+          );
+          if (result == true && context.mounted) {
+            context.read<HomeBloc>().add(LoadHomeData());
           }
         },
         backgroundColor: Theme.of(context).colorScheme.primary,
         foregroundColor: Theme.of(context).colorScheme.onPrimary,
         shape: const CircleBorder(),
-        tooltip: user.role == 'COLLEGE_ADMIN' ? 'Create Club' : 'Create Event',
+        tooltip: 'Create Club',
         child: const Icon(Icons.add),
-      ) : null,
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-      bottomNavigationBar: _buildBottomNavBar(context),
-    );
+      );
+    } else if (isClubAdmin) {
+      // Club Admin: Create Event
+      return FloatingActionButton(
+        onPressed: () async {
+          final homeState = context.read<HomeBloc>().state;
+          Club? managedClub;
+          if (homeState is HomeLoaded && user.managedClubId != null) {
+            try {
+              managedClub = homeState.clubs.firstWhere((c) => c.id == user.managedClubId);
+            } catch (e) {
+              debugPrint("Managed club not found in HomeBloc state");
+            }
+          }
+
+          if (managedClub != null && context.mounted) {
+            final Club club = managedClub;
+            final result = await Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => BlocProvider(
+                  create: (ctx) => EventListBloc(
+                    eventRepository: context.read<EventRepository>(),
+                  ),
+                  child: EventEditScreen(club: club),
+                ),
+              ),
+            );
+
+            if (result == true && context.mounted) {
+              context.read<HomeBloc>().add(LoadHomeData());
+            }
+          } else if (context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Could not find your managed club to create an event.'), backgroundColor: Colors.orange)
+            );
+          }
+        },
+        backgroundColor: Theme.of(context).colorScheme.primary,
+        foregroundColor: Theme.of(context).colorScheme.onPrimary,
+        shape: const CircleBorder(),
+        tooltip: 'Create Event',
+        child: const Icon(Icons.add),
+      );
+    } else if (isStudent) {
+      // Student: My Registrations Shortcut
+      return FloatingActionButton(
+        onPressed: () {
+          Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => const MyRegistrationsScreen())
+          );
+        },
+        backgroundColor: Colors.orange,
+        foregroundColor: Colors.white,
+        shape: const CircleBorder(),
+        tooltip: 'My Registrations',
+        child: const Icon(Icons.confirmation_number_outlined),
+      );
+    }
+    return null;
   }
+
 
   // --- WIDGET BUILDER METHODS ---
 
@@ -328,16 +359,7 @@ class HomeScreen extends StatelessWidget {
             title: const Text('Home'),
             onTap: () {
               Navigator.pop(context);
-              Navigator.push(context, MaterialPageRoute(builder: (_) =>
-                  BlocProvider(
-                    create: (ctx) =>
-                    NotificationBloc(
-                        notificationRepository: ctx.read<NotificationRepository>()
-                    )
-                      ..add(LoadNotifications()),
-                    child: const NotificationScreen(),
-                  )
-              ));
+              // Already on Home, maybe refresh?
             },
           ),
           ListTile(
@@ -351,7 +373,17 @@ class HomeScreen extends StatelessWidget {
           ListTile(
             leading: const Icon(Icons.notifications_outlined),
             title: const Text('Notifications'),
-            onTap: () => Navigator.pop(context),
+            onTap: () {
+              Navigator.pop(context);
+              Navigator.push(context, MaterialPageRoute(builder: (_) =>
+                  BlocProvider(
+                    create: (ctx) => NotificationBloc(
+                        notificationRepository: ctx.read<NotificationRepository>()
+                    )..add(LoadNotifications()),
+                    child: const NotificationScreen(),
+                  )
+              ));
+            },
           ),
           ListTile(
             leading: const Icon(Icons.person_outline),
