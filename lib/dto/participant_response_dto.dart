@@ -4,6 +4,7 @@ class ParticipantResponseDto {
   final int userId;
   final int eventId;
   final DateTime registeredAt;
+  final String? profileImageUrl;
 
   // These fields come from the payment/registration flow
   final String college;
@@ -20,6 +21,7 @@ class ParticipantResponseDto {
     required this.mobileNumber,
     required this.address,
     required this.paymentId,
+    this.profileImageUrl,
   });
 
   factory ParticipantResponseDto.fromJson(Map<String, dynamic> json) {
@@ -32,6 +34,7 @@ class ParticipantResponseDto {
       college: json['college'] ?? '',
       mobileNumber: json['mobileNumber'] ?? '',
       address: json['address'] ?? '',
+      profileImageUrl: json['profileImageUrl'],
       paymentId: json['paymentId'] ?? '',
     );
   }

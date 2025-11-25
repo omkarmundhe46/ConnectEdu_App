@@ -205,54 +205,82 @@ class EventDetailsScreen extends StatelessWidget {
     return BlocBuilder<EventDetailBloc, EventDetailState>(
       builder: (context, state) {
         if (state is EventDetailLoaded) {
-          if (state.participants.isEmpty) {
-            return const Center(child: Text('Be the first to register!'));
+          final participants = state.participants;
+
+          if (participants.isEmpty) {
+            return const Center(
+              child: Padding(
+                padding: EdgeInsets.symmetric(vertical: 8.0),
+                child: Text(
+                  'Be the first to register!',
+                  style: TextStyle(color: Colors.grey, fontStyle: FontStyle.italic),
+                ),
+              ),
+            );
           }
+
+          // Determine how many faces to show (max 3)
+          final int showCount = participants.length > 3 ? 3 : participants.length;
+          final int remainingCount = participants.length - showCount;
+
           return Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Row(
                 children: [
                   SizedBox(
-                    width: 70,
+                    width: 20.0 * showCount + 20, // Calculate width dynamically
                     height: 36,
                     child: Stack(
-                      children: List.generate(
-                        state.participants.length.clamp(0, 4),
-                            (index) => Positioned(
-                          left: (index * 18.0),
-                          child: CircleAvatar(
-                            radius: 18,
-                            backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+                      children: List.generate(showCount, (index) {
+                        final participant = participants[index];
+                        return Positioned(
+                          left: index * 20.0, // Overlap by shifting left
+                          child: Container(
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Theme.of(context).scaffoldBackgroundColor, width: 2), // White border for separation
+                            ),
                             child: CircleAvatar(
                               radius: 16,
-                              backgroundColor: Colors.blueGrey[100],
-                              child: const Icon(Icons.person, size: 18, color: Colors.blueGrey),
+                              backgroundColor: Colors.grey[200],
+                              backgroundImage: (participant.profileImageUrl != null && participant.profileImageUrl!.isNotEmpty)
+                                  ? CachedNetworkImageProvider(participant.profileImageUrl!)
+                                  : null,
+                              child: (participant.profileImageUrl == null || participant.profileImageUrl!.isEmpty)
+                                  ? Icon(Icons.person, size: 16, color: Colors.grey[400])
+                                  : null,
                             ),
                           ),
-                        ),
-                      ).reversed.toList(),
+                        );
+                      }),
                     ),
                   ),
                   const SizedBox(width: 8),
                   Text(
-                    '+${state.participants.length} Going',
-                    style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+                    remainingCount > 0
+                        ? '+$remainingCount more going'
+                        : '${participants.length} Going',
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold, color: Theme.of(context).primaryColor),
                   ),
                 ],
               ),
-              ElevatedButton.icon(
-                icon: const Icon(Icons.add, size: 18),
+
+              // Invite Button
+              OutlinedButton.icon(
+                icon: const Icon(Icons.share, size: 16),
                 label: const Text('Invite'),
                 onPressed: () => _shareEvent(context),
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 0),
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                  minimumSize: const Size(0, 32),
                 ),
               ),
             ],
           );
         }
+        // Loading State
         return Container(
           height: 40,
           alignment: Alignment.centerLeft,
