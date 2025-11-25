@@ -65,3 +65,17 @@ flutter:
   uses-material-design: true
   assets:
     - assets/images/
+
+flutter_native_splash:
+  color: "#FFFFFF"                # Background for light mode
+  color_dark: "#272727"           # Background for dark mode
+  image: assets/images/logo11.png   # Light mode logo
+  image_dark: assets/images/logo11.png   # Dark mode logo
+
+  android_12:
+    color: "#FFFFFF"
+    color_dark: "#272727"
+    image: assets/images/logo11.png
+    image_dark: assets/images/logo11.png
+
+  web: false

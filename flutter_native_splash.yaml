@@ -1,29 +1,39 @@
+#flutter_native_splash:
+#  # Common settings (Light mode)
+#  color: "#FFFFFF"
+#  image: assets/images/logo_fullscreen.png
+#
+#  # Dark mode (optional) — you can point to a dark-safe version if you create one
+#  color_dark: "#000000"
+#  # image_dark: assets/images/logo_fullscreen_dark.png
+#
+#  # Android pre-12
+#  android_gravity: center
+#  fullscreen: true
+#
+#  # iOS
+#  ios_content_mode: scaleAspectFit
+#
+#  # Web
+#  web_image_mode: contain
+#
+#  # Android 12+ (Adaptive icon) — point to same padded square
+#  android_12:
+#    image: assets/images/logo_fullscreen.png
+#    # image_dark: assets/images/logo_fullscreen_dark.png
+#    icon_background_color: "#FFFFFF"
+#    icon_background_color_dark: "#000000"
+
 flutter_native_splash:
-  # --- Common Settings ---
-  color: "#FFFFFF"
-  image: assets/images/logo1.png
+  color: "#FFFFFF"                # Background for light mode
+  color_dark: "#272727"           # Background for dark mode
+  image: assets/images/logo1.png   # Light mode logo
+  image_dark: assets/images/logo2.png   # Dark mode logo
 
-  # --- Dark Mode Settings ---
-  color_dark: "#000000"
-  image_dark: assets/images/logo2.png
-
-  # --- Android Specifics (Pre-Android 12) ---
-  android_gravity: center
-  fullscreen: true
-
-  # --- iOS Specifics ---
-  ios_content_mode: scaleAspectFit
-
-  # --- Web Specifics ---
-  web_image_mode: contain
-
-  # --- Android 12+ Configuration (The Fix) ---
-  # Android 12 uses an "Adaptive Icon" system.
-  # It puts your image inside a circle.
   android_12:
+    color: "#FFFFFF"
+    color_dark: "#272727"
     image: assets/images/logo1.png
     image_dark: assets/images/logo2.png
 
-    # Background colors are critical for Android 12
-    icon_background_color: "#FFFFFF"
-    icon_background_color_dark: "#000000"
+  web: false
