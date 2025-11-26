@@ -9,10 +9,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:connectedu_app/dto/registration_request_dto.dart';
 import 'package:connectedu_app/dto/order_response.dart';
 import 'package:connectedu_app/dto/payment_verification_request.dart';
-import 'package:flutter/foundation.dart'; // For debugPrint
-
-// TODO: Add this import when you add the Razorpay package
-// import 'package:razorpay_flutter/razorpay_flutter.dart';
+import 'package:razorpay_flutter/razorpay_flutter.dart';
 
 class RegistrationFormScreen extends StatefulWidget {
   final Event event;
@@ -36,17 +33,17 @@ class _RegistrationFormScreenState extends State<RegistrationFormScreen> {
 
   bool _isLoading = false;
 
-  // TODO: Uncomment these when you add the Razorpay package
-  // late Razorpay _razorpay;
+  late Razorpay _razorpay;
+
+  static const String _razorpayKey = 'rzp_test_R65VA9avsIM02o';
 
   @override
   void initState() {
     super.initState();
-    // TODO: Initialize Razorpay
-    // _razorpay = Razorpay();
-    // _razorpay.on(Razorpay.EVENT_PAYMENT_SUCCESS, _handlePaymentSuccess);
-    // _razorpay.on(Razorpay.EVENT_PAYMENT_ERROR, _handlePaymentError);
-    // _razorpay.on(Razorpay.EVENT_EXTERNAL_WALLET, _handleExternalWallet);
+    _razorpay = Razorpay();
+    _razorpay.on(Razorpay.EVENT_PAYMENT_SUCCESS, _handlePaymentSuccess);
+    _razorpay.on(Razorpay.EVENT_PAYMENT_ERROR, _handlePaymentError);
+    _razorpay.on(Razorpay.EVENT_EXTERNAL_WALLET, _handleExternalWallet);
   }
 
   @override
@@ -54,68 +51,89 @@ class _RegistrationFormScreenState extends State<RegistrationFormScreen> {
     _collegeController.dispose();
     _mobileController.dispose();
     _addressController.dispose();
-    // _razorpay.clear(); // Clear Razorpay listeners
+    _razorpay.clear();
     super.dispose();
   }
 
-  // --- Placeholder for Razorpay success handler ---
-  // void _handlePaymentSuccess(PaymentSuccessResponse response) {
-  //   debugPrint('Payment Successful: ${response.paymentId}');
-  //   _verifyPaymentOnBackend(
-  //     response.orderId!,
-  //     response.paymentId!,
-  //     response.signature!,
-  //     // Pass the registration data that was collected before payment
-  //   );
-  // }
+  // --- RAZORPAY HANDLERS ---
+  void _handlePaymentSuccess(PaymentSuccessResponse response) {
+    debugPrint('Payment Successful: ${response.paymentId}');
+    // The 'response' contains signature and paymentId. orderId comes from our state.
+    // Wait, Razorpay SDK doesn't return order_id in SuccessResponse directly in all versions,
+    // but we have it from our _currentOrder.
 
-  // --- Placeholder for Razorpay error handler ---
-  // void _handlePaymentError(PaymentFailureResponse response) {
-  //    debugPrint('Payment Error: ${response.code} - ${response.message}');
-  //    if (mounted) {
-  //      setState(() => _isLoading = false);
-  //      ScaffoldMessenger.of(context).showSnackBar(
-  //        SnackBar(content: Text('Payment Failed: ${response.message}'), backgroundColor: Colors.red),
-  //      );
-  //    }
-  // }
+    if (_currentOrder != null && _currentRegistrationData != null) {
+      _verifyPaymentOnBackend(
+        _currentOrder!.orderId,
+        response.paymentId!,
+        response.signature!,
+        _currentRegistrationData!,
+      );
+    }
+  }
 
-  // void _handleExternalWallet(ExternalWalletResponse response) {
-  //    debugPrint('External Wallet: ${response.walletName}');
-  // }
+  void _handlePaymentError(PaymentFailureResponse response) {
+    debugPrint('Payment Error: ${response.code} - ${response.message}');
+    if (mounted) {
+      setState(() => _isLoading = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Payment Failed: ${response.message}'), backgroundColor: Colors.red),
+      );
+    }
+  }
+
+  void _handleExternalWallet(ExternalWalletResponse response) {
+    debugPrint('External Wallet: ${response.walletName}');
+    // Usually treat this as success or handle specific wallet logic
+  }
+
+  // Temp storage for data needed during verification
+  OrderResponse? _currentOrder;
+  RegistrationData? _currentRegistrationData;
+
 
   Future<void> _submitRegistration() async {
-    if (!_formKey.currentState!.validate()) {
-      return; // Form is invalid
-    }
+    if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
 
-    // Create the DTO with the form data
+    // 1. Prepare Data
+    // Note: Amount isn't needed here for the DTO anymore if the backend calculates it from Event Fee,
+    // but we can send 0 or the expected fee. The backend overrides it securely anyway.
     final registrationData = RegistrationRequestDto(
       userId: widget.currentUser.id,
       college: _collegeController.text,
       mobileNumber: _mobileController.text,
       address: _addressController.text,
-      amount: 10000, // TODO: Replace with event.price from backend
+      amount: 0, // Backend uses event.fee
+    );
+
+    // Save for later verification
+    _currentRegistrationData = RegistrationData(
+      userId: registrationData.userId,
+      eventId: widget.event.id,
+      college: registrationData.college,
+      mobileNumber: registrationData.mobileNumber,
+      address: registrationData.address,
     );
 
     final apiService = context.read<ApiService>();
 
     try {
-      // 1. Create the payment order on your backend
+      // 2. Call Backend to Create Order
       debugPrint('Creating payment order...');
-      final orderResponse = await apiService.dio.post(
+      final response = await apiService.dio.post(
         '/api/clubs/${widget.event.clubId}/events/${widget.event.id}/register',
         data: registrationData.toJson(),
       );
 
-      final order = OrderResponse.fromJson(orderResponse.data);
-      debugPrint('Order created: ${order.orderId}');
+      final order = OrderResponse.fromJson(response.data);
+      _currentOrder = order;
 
-      // 2. Open the Razorpay checkout
-      // TODO: Replace this MOCK with real Razorpay logic
-      _openRazorpayCheckout_Mock(order, registrationData);
+      debugPrint('Order Created: ${order.orderId}, Amount: ${order.amount}');
+
+      // 3. Open Razorpay Checkout
+      _openRazorpayCheckout(order);
 
     } catch (e) {
       debugPrint('Error starting registration: $e');
@@ -128,30 +146,29 @@ class _RegistrationFormScreenState extends State<RegistrationFormScreen> {
     }
   }
 
-  // --- This is where Razorpay checkout is called ---
-  void _openRazorpayCheckout_Mock(OrderResponse order, RegistrationRequestDto regData) {
-    // --- THIS IS A MOCKUP for testing without the Razorpay SDK ---
-    debugPrint('Opening Razorpay Checkout (MOCK)');
+  void _openRazorpayCheckout(OrderResponse order) {
+    var options = {
+      'key': _razorpayKey,
+      'amount': order.amount, // Amount in paise
+      'name': 'ConnectEdu',
+      'description': 'Registration for ${widget.event.name}',
+      'order_id': order.orderId, // This links the payment to the order created on backend
+      'prefill': {
+        'contact': _mobileController.text,
+        'email': widget.currentUser.email,
+      },
+      'external': {
+        'wallets': ['paytm']
+      }
+    };
 
-    // Simulate a successful payment for testing
-    String mockPaymentId = 'pay_mock_${DateTime.now().millisecondsSinceEpoch}';
-    String mockSignature = 'mock_signature'; // This will fail verification if you haven't bypassed it
-
-    _verifyPaymentOnBackend(
-        order.orderId,
-        mockPaymentId,
-        mockSignature,
-        RegistrationData( // Create the DTO for verification
-          userId: regData.userId,
-          eventId: widget.event.id,
-          college: regData.college,
-          mobileNumber: regData.mobileNumber,
-          address: regData.address,
-        )
-    );
+    try {
+      _razorpay.open(options);
+    } catch (e) {
+      debugPrint('Error opening razorpay: $e');
+    }
   }
 
-  // --- This verifies the payment with your backend ---
   Future<void> _verifyPaymentOnBackend(String orderId, String paymentId, String signature, RegistrationData regData) async {
     debugPrint('Verifying payment with backend...');
     final apiService = context.read<ApiService>();
@@ -174,14 +191,10 @@ class _RegistrationFormScreenState extends State<RegistrationFormScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Registration Successful!'), backgroundColor: Colors.green),
         );
-
-        // Tell the EventDetailsBloc to refresh its state
         context.read<EventDetailBloc>().add(RefreshDetails());
-
-        // Pop back to the event details screen
         Navigator.of(context).pop();
       } else {
-        throw Exception('Payment verification failed: ${response.statusMessage}');
+        throw Exception('Payment verification failed');
       }
     } catch (e) {
       debugPrint('Error verifying payment: $e');
@@ -194,13 +207,10 @@ class _RegistrationFormScreenState extends State<RegistrationFormScreen> {
     }
   }
 
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Register for ${widget.event.name}'),
-      ),
+      appBar: AppBar(title: Text('Register for ${widget.event.name}')),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Form(
@@ -208,60 +218,40 @@ class _RegistrationFormScreenState extends State<RegistrationFormScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(
-                'Please fill in your details to register.',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
+              Text('Please fill in your details.', style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 24),
-              // Form fields
               TextFormField(
                 controller: _collegeController,
-                decoration: const InputDecoration(
-                  labelText: 'College Name',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.school_outlined),
-                ),
-                validator: (value) => (value == null || value.isEmpty) ? 'Please enter your college name' : null,
+                decoration: const InputDecoration(labelText: 'College Name', border: OutlineInputBorder(), prefixIcon: Icon(Icons.school_outlined)),
+                validator: (v) => (v == null || v.isEmpty) ? 'Required' : null,
               ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _mobileController,
-                decoration: const InputDecoration(
-                  labelText: 'Mobile Number',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.phone_outlined),
-                ),
+                decoration: const InputDecoration(labelText: 'Mobile Number', border: OutlineInputBorder(), prefixIcon: Icon(Icons.phone_outlined)),
                 keyboardType: TextInputType.phone,
                 inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                validator: (value) {
-                  if (value == null || value.isEmpty) return 'Please enter your mobile number';
-                  if (value.length != 10) return 'Must be 10 digits';
-                  return null;
-                },
+                validator: (v) => (v == null || v.length != 10) ? 'Must be 10 digits' : null,
               ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _addressController,
-                decoration: const InputDecoration(
-                  labelText: 'Address',
-                  border: OutlineInputBorder(),
-                  prefixIcon: Icon(Icons.home_outlined),
-                  alignLabelWithHint: true,
-                ),
-                maxLines: 3,
-                validator: (value) => (value == null || value.isEmpty) ? 'Please enter your address' : null,
+                decoration: const InputDecoration(labelText: 'Address', border: OutlineInputBorder(), prefixIcon: Icon(Icons.home_outlined)),
+                maxLines: 2,
+                validator: (v) => (v == null || v.isEmpty) ? 'Required' : null,
               ),
               const SizedBox(height: 32),
-              // Submit Button
+
               if (_isLoading)
                 const Center(child: CircularProgressIndicator())
               else
                 ElevatedButton(
                   onPressed: _submitRegistration,
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
+                  style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16)),
+                  child: Text(
+                    'Pay ₹${widget.event.fee.toStringAsFixed(2)}',
+                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                   ),
-                  child: const Text('Proceed to Pay (₹100.00)', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)), // TODO: Use dynamic price
                 ),
             ],
           ),
@@ -270,4 +260,3 @@ class _RegistrationFormScreenState extends State<RegistrationFormScreen> {
     );
   }
 }
-

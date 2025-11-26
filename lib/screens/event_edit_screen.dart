@@ -30,6 +30,7 @@ class _EventEditScreenState extends State<EventEditScreen> {
   late TextEditingController _contactPhone1Controller;
   late TextEditingController _contactName2Controller;
   late TextEditingController _contactPhone2Controller;
+  final _feeController = TextEditingController();
 
   DateTime? _selectedDateTime;
   bool _isSubmitting = false;
@@ -54,6 +55,7 @@ class _EventEditScreenState extends State<EventEditScreen> {
     _contactPhone2Controller = TextEditingController(text: widget.event?.contactPhone2 ?? '');
     _selectedDateTime = widget.event?.date;
     _currentImageUrl = widget.event?.imageUrl;
+    _feeController.text = widget.event?.fee.toString() ?? '0';
   }
 
   @override
@@ -65,6 +67,7 @@ class _EventEditScreenState extends State<EventEditScreen> {
     _contactPhone1Controller.dispose();
     _contactName2Controller.dispose();
     _contactPhone2Controller.dispose();
+    _feeController.dispose();
     super.dispose();
   }
 
@@ -200,6 +203,7 @@ class _EventEditScreenState extends State<EventEditScreen> {
       'contactName2': _contactName2Controller.text,
       'contactPhone2': _contactPhone2Controller.text,
       'meetingLink': '', // Add meeting link field (can be updated later)
+      'fee': double.tryParse(_feeController.text) ?? 0.0,
     };
 
     try {
@@ -311,6 +315,20 @@ class _EventEditScreenState extends State<EventEditScreen> {
                   label: 'Add location',
                   controller: _locationController,
                   validator: (value) => value == null || value.isEmpty ? 'Required' : null,
+                ),
+                const Divider(),
+
+                _buildInputRow(
+                  context: context,
+                  icon: Icons.currency_rupee,
+                  label: 'Registration Fee (0 for Free)',
+                  controller: _feeController,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) return 'Please enter a fee';
+                    if (double.tryParse(value) == null) return 'Invalid number';
+                    return null;
+                  },
                 ),
                 const Divider(),
 

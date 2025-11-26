@@ -12,6 +12,7 @@ class Event {
   final String? contactPhone1;
   final String? contactName2;
   final String? contactPhone2;
+  final double fee;
 
   Event({
     required this.id,
@@ -27,6 +28,7 @@ class Event {
     this.contactPhone1,
     this.contactName2,
     this.contactPhone2,
+    this.fee = 0.0,
   });
 
   factory Event.fromJson(Map<String, dynamic> json) {
@@ -51,6 +53,9 @@ class Event {
       contactPhone1: json['contactPhone1'],
       contactName2: json['contactName2'],
       contactPhone2: json['contactPhone2'],
+      fee: (json['fee'] is int)
+          ? (json['fee'] as int).toDouble()
+          : (json['fee'] as double?) ?? 0.0,
     );
   }
 }
