@@ -3,15 +3,19 @@ import 'package:connectedu_app/models/club.dart';
 import 'package:connectedu_app/models/event.dart';
 import 'package:connectedu_app/models/user.dart';
 import 'package:connectedu_app/repositories/event_repository.dart';
+import 'package:connectedu_app/repositories/discussion_repository.dart'; // --- ADD ---
+import 'package:connectedu_app/services/api_service.dart'; // --- ADD ---
 import 'package:connectedu_app/screens/event_details_screen.dart';
 import 'package:connectedu_app/screens/event_edit_screen.dart';
+import 'package:connectedu_app/screens/certificate_config_screen.dart'; // --- ADD ---
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
-// Enum for Admin actions
-enum EventAdminAction { update, delete, updateLink }
+// --- UPDATED ENUM ---
+enum EventAdminAction { update, delete, updateLink, designCertificate }
+// --- END UPDATE ---
 
 class EventListScreen extends StatelessWidget {
   final Club club;
@@ -332,7 +336,21 @@ class EventListScreen extends StatelessWidget {
                         }
                       } else if (action == EventAdminAction.updateLink) {
                         _showUpdateLinkDialog(context, event, eventListBloc);
+
+                        // --- ADD THIS BLOCK ---
+                      } else if (action == EventAdminAction.designCertificate) {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => RepositoryProvider(
+                              // Provide needed repositories
+                              create: (c) => DiscussionRepository(context.read<ApiService>()),
+                              child: CertificateConfigScreen(eventId: event.id),
+                            ),
+                          ),
+                        );
                       }
+                      // --- END OF ADDITION ---
                     },
                     itemBuilder: (BuildContext context) => <PopupMenuEntry<EventAdminAction>>[
                       const PopupMenuItem<EventAdminAction>(
@@ -343,6 +361,12 @@ class EventListScreen extends StatelessWidget {
                         value: EventAdminAction.updateLink,
                         child: ListTile(leading: Icon(Icons.link_outlined), title: Text('Update Link')),
                       ),
+                      // --- ADD MENU ITEM ---
+                      const PopupMenuItem<EventAdminAction>(
+                        value: EventAdminAction.designCertificate,
+                        child: ListTile(leading: Icon(Icons.card_membership), title: Text('Design Certificate')),
+                      ),
+                      // --- END ADDITION ---
                       const PopupMenuItem<EventAdminAction>(
                         value: EventAdminAction.delete,
                         child: ListTile(leading: Icon(Icons.delete_outline, color: Colors.redAccent), title: Text('Delete Event')),

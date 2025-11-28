@@ -1,4 +1,6 @@
 import 'dart:io';
+import 'package:connectedu_app/models/certificate_template.dart';
+import 'package:connectedu_app/models/event_certificate_config.dart';
 import 'package:connectedu_app/services/api_service.dart';
 import 'package:flutter/foundation.dart';
 import 'package:dio/dio.dart';
@@ -53,4 +55,74 @@ class CertificateRepository {
       throw Exception(e.toString());
     }
   }
+
+
+  // 1. Get Available Templates
+  Future<List<CertificateTemplate>> getTemplates() async {
+    try {
+      final response = await _apiService.dio.get('/api/certificates/config/templates');
+      final data = response.data as List;
+      return data.map((json) => CertificateTemplate.fromJson(json)).toList();
+    } catch (e) {
+      debugPrint('Error fetching templates: $e');
+      return [];
+    }
+  }
+
+  // 2. Get Existing Config
+  Future<EventCertificateConfig?> getConfig(int eventId) async {
+    try {
+      final response = await _apiService.dio.get('/api/certificates/config/event/$eventId');
+      if (response.data == null || response.data == "") return null;
+      return EventCertificateConfig.fromJson(response.data);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // 3. Save Config (Updated to match new simplified backend)
+  Future<void> saveConfig(int eventId, String templateId) async {
+    try {
+      await _apiService.dio.post(
+        '/api/certificates/config/event/$eventId',
+        queryParameters: {'template': templateId},
+      );
+    } on DioException catch (e) {
+      throw Exception(e.response?.data?['message'] ?? 'Failed to save certificate config');
+    } catch (e) {
+      throw Exception('Failed to save config: $e');
+    }
+  }
+
+  // 4. Reuse the DiscussionRepository's uploadFile logic?
+  // Ideally, you should move 'uploadFile' to a shared 'FileRepository' or keep using DiscussionRepository.
+  // For now, let's assume you can access the upload endpoint here too.
+  Future<String> uploadFile(File file) async {
+    try {
+      String fileName = file.path.split('/').last;
+      FormData formData = FormData.fromMap({
+        "file": await MultipartFile.fromFile(file.path, filename: fileName),
+      });
+
+      final response = await _apiService.dio.post(
+        '/api/uploads', // Your generic upload endpoint
+        data: formData,
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        return response.data['fileUrl'];
+      } else {
+        throw Exception('File upload failed: ${response.statusCode}');
+      }
+    } on DioException catch (e) {
+      debugPrint('File upload API error: ${e.response?.data ?? e.message}');
+      throw Exception('File upload failed.');
+    } catch (e) {
+      debugPrint('File upload error: $e');
+      throw Exception('An unexpected error occurred.');
+    }
+  }
+
+
+
 }
