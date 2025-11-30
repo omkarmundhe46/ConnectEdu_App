@@ -58,9 +58,12 @@ class CertificateRepository {
 
 
   // 1. Get Available Templates
-  Future<List<CertificateTemplate>> getTemplates() async {
+  Future<List<CertificateTemplate>> getTemplates(String? category) async {
     try {
-      final response = await _apiService.dio.get('/api/certificates/config/templates');
+      final response = await _apiService.dio.get(
+        '/api/certificates/config/templates',
+        queryParameters: category != null ? {'category': category} : null,
+      );
       final data = response.data as List;
       return data.map((json) => CertificateTemplate.fromJson(json)).toList();
     } catch (e) {

@@ -93,7 +93,7 @@ class ClubListBloc extends Bloc<ClubListEvent, ClubListState> {
     final currentState = state is ClubListLoaded ? (state as ClubListLoaded) : null;
     emit(ClubActionInProgress(previousState: currentState));
     try {
-      await clubRepository.createClub(event.name, event.description, event.adminEmail, event.logoUrl);
+      await clubRepository.createClub(event.name, event.description, event.adminEmail, event.logoUrl, event.category);
       emit(const ClubActionSuccess('Club created successfully!'));
       add(LoadClubsAndEvents()); // Trigger refresh
     } catch (e) {
@@ -115,7 +115,7 @@ class ClubListBloc extends Bloc<ClubListEvent, ClubListState> {
     emit(ClubActionInProgress(previousState: currentState));
     try {
       await clubRepository.updateClub(
-          event.clubId, event.name, event.description, event.adminEmail, event.logoUrl);
+          event.clubId, event.name, event.description, event.adminEmail, event.logoUrl, event.category);
       emit(const ClubActionSuccess('Club updated successfully!'));
       add(LoadClubsAndEvents());
     } catch (e) {

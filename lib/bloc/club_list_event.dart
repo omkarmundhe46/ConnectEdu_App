@@ -15,9 +15,10 @@ class CreateClub extends ClubListEvent {
   final String description;
   final String adminEmail;
   final String? logoUrl;
-  const CreateClub({required this.name, required this.description, required this.adminEmail, this.logoUrl});
+  final String category;
+  const CreateClub({required this.name, required this.description, required this.adminEmail, this.logoUrl, required this.category,});
   @override
-  List<Object?> get props => [name, description, adminEmail, logoUrl];
+  List<Object?> get props => [name, description, adminEmail, logoUrl, category];
 }
 
 // Event to update an existing club
@@ -27,9 +28,10 @@ class UpdateClub extends ClubListEvent {
   final String description;
   final String adminEmail;
   final String? logoUrl;
-  const UpdateClub({required this.clubId, required this.name, required this.description, required this.adminEmail, this.logoUrl});
+  final String category;
+  const UpdateClub({required this.clubId, required this.name, required this.description, required this.adminEmail, this.logoUrl, required this.category,});
   @override
-  List<Object?> get props => [clubId, name, description, adminEmail, logoUrl];
+  List<Object?> get props => [clubId, name, description, adminEmail, logoUrl, category];
 }
 
 // Event to delete a club

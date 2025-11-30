@@ -101,7 +101,8 @@ class _AllUpcomingEventsScreenState extends State<AllUpcomingEventsScreen> {
                 id: event.clubId ?? 0,
                 name: 'Loading Club...',
                 description: '',
-                adminId: 0
+                adminId: 0,
+              category: 'ALL',
             );
 
             Navigator.push(

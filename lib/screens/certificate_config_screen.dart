@@ -6,7 +6,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 
 class CertificateConfigScreen extends StatefulWidget {
   final int eventId;
-  const CertificateConfigScreen({super.key, required this.eventId});
+  final String clubCategory;
+  const CertificateConfigScreen({super.key, required this.eventId, required this.clubCategory});
 
   @override
   State<CertificateConfigScreen> createState() => _CertificateConfigScreenState();
@@ -28,7 +29,7 @@ class _CertificateConfigScreenState extends State<CertificateConfigScreen> {
     final repo = context.read<CertificateRepository>();
     try {
       // 1. Load Templates
-      final templates = await repo.getTemplates();
+      final templates = await repo.getTemplates(widget.clubCategory);
 
       // 2. Load Existing Config
       final config = await repo.getConfig(widget.eventId);

@@ -24,7 +24,7 @@ class ClubRepository {
 
 
 
-  Future<Club> createClub(String name, String description, String adminEmail, String? logoUrl) async {
+  Future<Club> createClub(String name, String description, String adminEmail, String? logoUrl, String category) async {
     try {
       final response = await _apiService.dio.post(
         '/api/clubs',
@@ -33,15 +33,35 @@ class ClubRepository {
           'description': description,
           'adminEmail': adminEmail,
           'logoUrl': logoUrl,
+          'category': category, // Added
         },
       );
       return Club.fromJson(response.data);
     } on DioException catch (e) {
-      debugPrint('Failed to create club: ${e.response?.data ?? e.message}');
       throw Exception('Failed to create club: ${e.response?.data?['message'] ?? e.message}');
     } catch (e) {
-      debugPrint('Failed to create club: $e');
       throw Exception('Failed to create club.');
+    }
+  }
+
+  // --- UPDATED ---
+  Future<Club> updateClub(int clubId, String name, String description, String adminEmail, String? logoUrl, String category) async {
+    try {
+      final response = await _apiService.dio.put(
+        '/api/clubs/$clubId',
+        data: {
+          'name': name,
+          'description': description,
+          'adminEmail': adminEmail,
+          'logoUrl': logoUrl,
+          'category': category, // Added
+        },
+      );
+      return Club.fromJson(response.data);
+    } on DioException catch (e) {
+      throw Exception('Failed to update club: ${e.response?.data?['message'] ?? e.message}');
+    } catch (e) {
+      throw Exception('Failed to update club.');
     }
   }
 
@@ -67,27 +87,6 @@ class ClubRepository {
     } catch (e) {
       debugPrint('Failed to fetch my clubs: $e');
       return []; // Return empty list on error
-    }
-  }
-
-  Future<Club> updateClub(int clubId, String name, String description, String adminEmail, String? logoUrl) async {
-    try {
-      final response = await _apiService.dio.put(
-        '/api/clubs/$clubId',
-        data: {
-          'name': name,
-          'description': description,
-          'adminEmail': adminEmail,
-          'logoUrl': logoUrl,
-        },
-      );
-      return Club.fromJson(response.data);
-    } on DioException catch (e) {
-      debugPrint('Failed to update club: ${e.response?.data ?? e.message}');
-      throw Exception('Failed to update club: ${e.response?.data?['message'] ?? e.message}');
-    } catch (e) {
-      debugPrint('Failed to update club: $e');
-      throw Exception('Failed to update club.');
     }
   }
 

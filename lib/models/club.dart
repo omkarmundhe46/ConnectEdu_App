@@ -1,19 +1,20 @@
 import 'package:flutter/foundation.dart';
 
-// No Equatable or Equatable props needed if not comparing objects.
 class Club {
   final int id;
   final String name;
   final String description;
   final int adminId;
-  final String? logoUrl; // The URL for the club's logo from S3
+  final String category; // New Field
+  final String? logoUrl;
 
   const Club({
     required this.id,
     required this.name,
     required this.description,
     required this.adminId,
-    this.logoUrl, // Make this optional
+    required this.category, // Required
+    this.logoUrl,
   });
 
   factory Club.fromJson(Map<String, dynamic> json) {
@@ -22,16 +23,18 @@ class Club {
       name: json['name'] as String,
       description: json['description'] as String,
       adminId: json['adminId'] as int,
-      logoUrl: json['logoUrl'] as String?, // Map the logoUrl, can be null
+      // Default to 'ALL' if the backend sends null (e.g. for old data)
+      category: json['category'] ?? 'ALL',
+      logoUrl: json['logoUrl'] as String?,
     );
   }
 
-  // copyWith method for easier updates in BLoC
   Club copyWith({
     int? id,
     String? name,
     String? description,
     int? adminId,
+    String? category, // Add to copyWith
     String? logoUrl,
   }) {
     return Club(
@@ -39,8 +42,8 @@ class Club {
       name: name ?? this.name,
       description: description ?? this.description,
       adminId: adminId ?? this.adminId,
+      category: category ?? this.category, // Update here
       logoUrl: logoUrl ?? this.logoUrl,
     );
   }
 }
-

@@ -158,6 +158,7 @@ class _MyRegistrationsScreenState extends State<MyRegistrationsScreen> {
             name: 'Loading...', // BLoC will fetch the full data
             description: '',
             adminId: 0, // This isn't used by the BLoC's logic
+            category: 'ALL',
           );
 
           // 3. Navigate

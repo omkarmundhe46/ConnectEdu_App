@@ -179,7 +179,7 @@ class HomeScreen extends StatelessWidget {
                         final event = state.upcomingEvents[index];
                         final club = state.clubs.firstWhere(
                               (c) => c.id == event.clubId,
-                          orElse: () => Club(id: event.clubId ?? 0, name: "Unknown Club", description: "", adminId: 0, logoUrl: null),
+                          orElse: () => Club(id: event.clubId ?? 0, name: "Unknown Club", description: "", adminId: 0, logoUrl: null, category: 'ALL'),
                         );
                         return _buildEventCard(context, event, () {
                           Navigator.push(

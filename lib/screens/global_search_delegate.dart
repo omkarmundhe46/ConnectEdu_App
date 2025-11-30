@@ -173,7 +173,8 @@ class GlobalSearchDelegate extends SearchDelegate {
             id: event.clubId ?? 0,
             name: 'Loading...',
             description: '',
-            adminId: 0
+            adminId: 0,
+          category: 'ALL',
         );
 
         Navigator.push(

@@ -2,6 +2,7 @@ import 'package:connectedu_app/bloc/event_list_bloc.dart';
 import 'package:connectedu_app/models/club.dart';
 import 'package:connectedu_app/models/event.dart';
 import 'package:connectedu_app/models/user.dart';
+import 'package:connectedu_app/repositories/certificate-service.dart';
 import 'package:connectedu_app/repositories/event_repository.dart';
 import 'package:connectedu_app/repositories/discussion_repository.dart'; // --- ADD ---
 import 'package:connectedu_app/services/api_service.dart'; // --- ADD ---
@@ -337,20 +338,23 @@ class EventListScreen extends StatelessWidget {
                       } else if (action == EventAdminAction.updateLink) {
                         _showUpdateLinkDialog(context, event, eventListBloc);
 
-                        // --- ADD THIS BLOCK ---
+
                       } else if (action == EventAdminAction.designCertificate) {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
                             builder: (_) => RepositoryProvider(
-                              // Provide needed repositories
-                              create: (c) => DiscussionRepository(context.read<ApiService>()),
-                              child: CertificateConfigScreen(eventId: event.id),
+                              create: (c) => CertificateRepository(context.read<ApiService>()), // Use CertificateRepo
+                              child: CertificateConfigScreen(
+                                  eventId: event.id,
+                                  // Pass the actual category from the Club object
+                                  clubCategory: club.category
+                              ),
                             ),
                           ),
                         );
                       }
-                      // --- END OF ADDITION ---
+
                     },
                     itemBuilder: (BuildContext context) => <PopupMenuEntry<EventAdminAction>>[
                       const PopupMenuItem<EventAdminAction>(

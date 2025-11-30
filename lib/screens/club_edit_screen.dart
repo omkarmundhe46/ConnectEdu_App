@@ -1,15 +1,15 @@
-import 'dart:io'; // For File type
+import 'dart:io';
 import 'package:connectedu_app/bloc/club_list_bloc.dart';
 import 'package:connectedu_app/models/club.dart';
-import 'package:connectedu_app/services/api_service.dart'; // For direct upload
-import 'package:dio/dio.dart'; // Import Dio for FormData
-import 'package:flutter/foundation.dart'; // For debugPrint
+import 'package:connectedu_app/services/api_service.dart';
+import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:image_picker/image_picker.dart'; // Import image_picker
+import 'package:image_picker/image_picker.dart';
 
 class ClubEditScreen extends StatefulWidget {
-  final Club? club; // If club is null, it's 'Create' mode, otherwise 'Edit' mode
+  final Club? club;
 
   const ClubEditScreen({super.key, this.club});
 
@@ -21,23 +21,39 @@ class _ClubEditScreenState extends State<ClubEditScreen> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _nameController;
   late TextEditingController _descriptionController;
-  late TextEditingController _adminEmailController; // Changed from ID to Email
-  bool _isSubmitting = false; // Renamed from _isLoading for clarity
+  late TextEditingController _adminEmailController;
+
+  // --- CATEGORY STATE ---
+  String _selectedCategory = 'ALL';
+  final List<String> _categories = ['ALL', 'CODING', 'SPORTS', 'CULTURAL', 'TECHNICAL', 'ARTS'];
+  // ---------------------
+
+  bool _isSubmitting = false;
 
   // State for image upload
-  XFile? _selectedImageFile; // Stores the selected file from picker
-  String? _currentImageUrl; // Stores existing or newly uploaded URL
+  XFile? _selectedImageFile;
+  String? _currentImageUrl;
   bool _isUploadingImage = false;
-  final ImagePicker _picker = ImagePicker(); // Instance of image picker
+  final ImagePicker _picker = ImagePicker();
 
   @override
   void initState() {
     super.initState();
     _nameController = TextEditingController(text: widget.club?.name ?? '');
     _descriptionController = TextEditingController(text: widget.club?.description ?? '');
-    // For admin email, leave blank in create mode. Fetch in edit mode if needed (more complex).
     _adminEmailController = TextEditingController();
-    _currentImageUrl = widget.club?.logoUrl; // Pre-fill image URL if editing
+
+    // --- INIT CATEGORY ---
+    _selectedCategory = widget.club?.category ?? 'ALL';
+    // Ensure the category from DB exists in our list, otherwise default to ALL
+    if (widget.club != null && widget.club!.category.isNotEmpty) {
+      if (_categories.contains(widget.club!.category)) {
+        _selectedCategory = widget.club!.category;
+      }
+    }
+    // ---------------------
+
+    _currentImageUrl = widget.club?.logoUrl;
   }
 
   @override
@@ -51,11 +67,10 @@ class _ClubEditScreenState extends State<ClubEditScreen> {
   // --- IMAGE PICKER LOGIC ---
   Future<void> _pickImage() async {
     try {
-      final XFile? image = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 70); // Added imageQuality
+      final XFile? image = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 70);
       if (image != null) {
-        // Optional: Check file size before proceeding
         final fileSize = await image.length();
-        if (fileSize > (10 * 1024 * 1024)) { // Example: 10MB limit
+        if (fileSize > (10 * 1024 * 1024)) {
           if(mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(content: Text('Image too large. Please select a file under 10MB.'), backgroundColor: Colors.orange),
@@ -66,10 +81,8 @@ class _ClubEditScreenState extends State<ClubEditScreen> {
 
         setState(() {
           _selectedImageFile = image;
-          _currentImageUrl = null; // Clear previous URL when new image is picked
+          _currentImageUrl = null;
         });
-        // You could upload immediately here, or wait until the form is submitted
-        // await _uploadImage(image);
       }
     } catch (e) {
       if (mounted) {
@@ -81,7 +94,6 @@ class _ClubEditScreenState extends State<ClubEditScreen> {
   }
 
   // --- IMAGE UPLOAD LOGIC ---
-  // Returns the S3 URL on success, null on failure
   Future<String?> _uploadImage(XFile image) async {
     setState(() { _isUploadingImage = true; });
     String? uploadedUrl;
@@ -90,16 +102,11 @@ class _ClubEditScreenState extends State<ClubEditScreen> {
       String fileName = image.path.split('/').last;
       FormData formData = FormData.fromMap({
         "file": await MultipartFile.fromFile(image.path, filename: fileName),
-        // "messageType": "IMAGE", // Using IMAGE type for logos/banners
       });
 
       debugPrint('Uploading image...');
-      // IMPORTANT: Using the discussion service endpoint as a placeholder.
-      // Replace '1', '1' with valid IDs or create a generic upload endpoint.
-      // --- THIS IS THE FIX ---
-      // Call the new, correct upload endpoint
       final response = await apiService.dio.post(
-        '/api/uploads', // Use the new endpoint via the Gateway
+        '/api/uploads',
         data: formData,
         onSendProgress: (int sent, int total) {
           debugPrint('Upload progress: ${(sent / total * 100).toStringAsFixed(0)}%');
@@ -138,27 +145,24 @@ class _ClubEditScreenState extends State<ClubEditScreen> {
     if (_formKey.currentState!.validate()) {
       setState(() { _isSubmitting = true; });
 
-      String? finalImageUrl = _currentImageUrl; // Start with existing or previously uploaded URL
+      String? finalImageUrl = _currentImageUrl;
 
-      // Upload image IF a new one was selected
       if (_selectedImageFile != null) {
         final uploadedUrl = await _uploadImage(_selectedImageFile!);
         if (uploadedUrl == null) {
-          // Handle upload failure before submitting club data
           if(mounted) setState(() { _isSubmitting = false; });
-          return; // Stop submission if upload fails
+          return;
         }
-        finalImageUrl = uploadedUrl; // Use the newly uploaded URL
-        _selectedImageFile = null; // Clear the selection after successful upload
+        finalImageUrl = uploadedUrl;
+        _selectedImageFile = null;
       }
 
       final name = _nameController.text;
       final description = _descriptionController.text;
       final adminEmail = _adminEmailController.text;
 
-      // Email validation
       final isEditMode = widget.club != null;
-      if (!isEditMode && adminEmail.isEmpty) { // Required for create
+      if (!isEditMode && adminEmail.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Admin Email is required to create a club.'), backgroundColor: Colors.red),
         );
@@ -173,15 +177,16 @@ class _ClubEditScreenState extends State<ClubEditScreen> {
         return;
       }
 
-      // Dispatch event to BLoC
       try {
         if (!isEditMode) {
           // Create Mode
           context.read<ClubListBloc>().add(CreateClub(
-              name: name,
-              description: description,
-              adminEmail: adminEmail, // Must provide email for creation
-              logoUrl: finalImageUrl
+            name: name,
+            description: description,
+            adminEmail: adminEmail,
+            logoUrl: finalImageUrl,
+            // --- PASS CATEGORY ---
+            category: _selectedCategory,
           ));
         } else {
           // Edit Mode
@@ -189,22 +194,20 @@ class _ClubEditScreenState extends State<ClubEditScreen> {
             clubId: widget.club!.id,
             name: name,
             description: description,
-            // Only send adminEmail if it was entered, otherwise backend keeps old one
             adminEmail: adminEmail.isNotEmpty ? adminEmail : '',
             logoUrl: finalImageUrl,
+            // --- PASS CATEGORY ---
+            category: _selectedCategory,
           ));
         }
-        // Listener will handle navigation on success/failure
       } catch (e) {
-        // BLoC error handling should manage this, but we stop loading
         if (mounted) setState(() { _isSubmitting = false; });
         debugPrint("Error dispatching club action: $e");
-        ScaffoldMessenger.of(context).showSnackBar( // Show error if dispatch fails instantly
+        ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Failed to submit: ${e.toString()}'), backgroundColor: Colors.red),
         );
       }
     } else {
-      // Form validation failed
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please correct the errors in the form.'), backgroundColor: Colors.orange),
       );
@@ -219,12 +222,10 @@ class _ClubEditScreenState extends State<ClubEditScreen> {
       appBar: AppBar(
         title: Text(isEditMode ? 'Edit Club' : 'Create Club'),
       ),
-      // Use BlocListener for feedback and navigation *after* state changes
       body: BlocListener<ClubListBloc, ClubListState>(
         listener: (context, state) {
-          // Stop loading indicator when an action completes (success or fail)
           if (state is ClubActionSuccess || state is ClubActionFailure) {
-            if (mounted && _isSubmitting) { // Check if we were submitting
+            if (mounted && _isSubmitting) {
               setState(() { _isSubmitting = false; });
             }
           }
@@ -235,7 +236,7 @@ class _ClubEditScreenState extends State<ClubEditScreen> {
               SnackBar(content: Text(state.message), backgroundColor: Colors.green),
             );
             if (Navigator.canPop(context)) {
-              Navigator.of(context).pop(true); // Go back after success
+              Navigator.of(context).pop(true);
             }
           } else if (state is ClubActionFailure) {
             ScaffoldMessenger.of(context).removeCurrentSnackBar();
@@ -261,7 +262,6 @@ class _ClubEditScreenState extends State<ClubEditScreen> {
                           CircleAvatar(
                             radius: 60,
                             backgroundColor: Theme.of(context).colorScheme.secondaryContainer,
-                            // Display logic: Selected file > Current URL > Placeholder
                             backgroundImage: _selectedImageFile != null
                                 ? FileImage(File(_selectedImageFile!.path))
                                 : (_currentImageUrl != null && _currentImageUrl!.isNotEmpty
@@ -271,7 +271,6 @@ class _ClubEditScreenState extends State<ClubEditScreen> {
                                 ? Icon(Icons.group_add_outlined, size: 50, color: Theme.of(context).colorScheme.onSecondaryContainer.withOpacity(0.7))
                                 : null,
                           ),
-                          // Show loading indicator during upload
                           if (_isUploadingImage) const CircularProgressIndicator(),
                         ],
                       ),
@@ -286,7 +285,6 @@ class _ClubEditScreenState extends State<ClubEditScreen> {
                   ),
                 ),
                 const SizedBox(height: 24),
-                // --- END LOGO UPLOAD ---
 
                 TextFormField(
                   controller: _nameController,
@@ -294,6 +292,29 @@ class _ClubEditScreenState extends State<ClubEditScreen> {
                   validator: (value) => value == null || value.isEmpty ? 'Please enter a name' : null,
                 ),
                 const SizedBox(height: 16),
+
+                // --- CATEGORY DROPDOWN ---
+                DropdownButtonFormField<String>(
+                  value: _selectedCategory,
+                  decoration: const InputDecoration(
+                    labelText: 'Club Category',
+                    border: OutlineInputBorder(),
+                  ),
+                  items: _categories.map((String category) {
+                    return DropdownMenuItem<String>(
+                      value: category,
+                      child: Text(category),
+                    );
+                  }).toList(),
+                  onChanged: (String? newValue) {
+                    setState(() {
+                      _selectedCategory = newValue!;
+                    });
+                  },
+                ),
+                const SizedBox(height: 16),
+                // --------------------------
+
                 TextFormField(
                   controller: _descriptionController,
                   decoration: const InputDecoration(labelText: 'Description', border: OutlineInputBorder(), alignLabelWithHint: true),
@@ -301,7 +322,7 @@ class _ClubEditScreenState extends State<ClubEditScreen> {
                   validator: (value) => value == null || value.isEmpty ? 'Please enter a description' : null,
                 ),
                 const SizedBox(height: 16),
-                // --- ADMIN EMAIL FIELD ---
+
                 TextFormField(
                   controller: _adminEmailController,
                   decoration: InputDecoration(
@@ -317,17 +338,16 @@ class _ClubEditScreenState extends State<ClubEditScreen> {
                     if (value != null && value.isNotEmpty && !RegExp(r"^[a-zA-Z0-9.]+@[a-zA-Z0-9]+\.[a-zA-Z]+").hasMatch(value)) {
                       return 'Please enter a valid email format';
                     }
-                    return null; // Null means valid
+                    return null;
                   },
                 ),
-                // --- END ADMIN EMAIL FIELD ---
                 const SizedBox(height: 32),
                 _isSubmitting
                     ? const Center(child: CircularProgressIndicator())
                     : ElevatedButton.icon(
                   icon: Icon(isEditMode ? Icons.save_alt_outlined : Icons.add_circle_outline),
                   label: Text(isEditMode ? 'Save Changes' : 'Create Club'),
-                  onPressed: _submitForm, // Calls the updated async submit method
+                  onPressed: _submitForm,
                   style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)
@@ -341,4 +361,3 @@ class _ClubEditScreenState extends State<ClubEditScreen> {
     );
   }
 }
-
