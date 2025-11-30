@@ -1,6 +1,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:connectedu_app/bloc/auth_bloc.dart';
 import 'package:connectedu_app/models/user.dart';
+import 'package:connectedu_app/screens/analytics_dashboard_screen.dart';
 import 'package:connectedu_app/screens/change_password_screen.dart';
 import 'package:connectedu_app/screens/edit_profile_screen.dart';
 import 'package:connectedu_app/screens/my_registrations.dart';
@@ -184,6 +185,28 @@ class ProfileScreen extends StatelessWidget {
                                 Navigator.push(context, MaterialPageRoute(builder: (_) => const MyRegistrationsScreen()));
                               }),
 
+
+                              if (currentUser.role == 'COLLEGE_ADMIN' || currentUser.role == 'CLUB_ADMIN')
+                                Column(
+                                  children: [
+                                    _buildProfileOption(
+                                      context,
+                                      icon: Icons.analytics_outlined,
+                                      iconColor: Colors.purple,
+                                      title: 'Analytics Dashboard',
+                                      subtitle: 'View performance stats',
+                                      onTap: () {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(builder: (_) => AnalyticsDashboardScreen(user: currentUser)),
+                                        );
+                                      },
+                                    ),
+                                    const Divider(height: 1),
+                                  ],
+                                ),
+
+
                               _buildProfileOption(context, icon: Icons.lock_outline, title: 'Change Password', onTap: () {
                                 Navigator.push(context, MaterialPageRoute(builder: (_) => const ChangePasswordScreen()));
                               }),
@@ -227,27 +250,39 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
+  // Helper widget for list tile options
   Widget _buildProfileOption(
       BuildContext context, {
         required IconData icon,
         required String title,
         required VoidCallback onTap,
+        Color? iconColor, // Added as optional
+        String? subtitle, // Added as optional
         bool isDestructive = false,
       }) {
     final theme = Theme.of(context);
-    final color = isDestructive ? Colors.red : theme.colorScheme.onSurface;
+    final textColor = isDestructive ? Colors.red : theme.colorScheme.onSurface;
+
+    // Determine the icon color: Destructive Red > Custom Color > Default Primary
+    final effectiveIconColor = isDestructive
+        ? Colors.red
+        : (iconColor ?? theme.colorScheme.primary);
 
     return ListTile(
       contentPadding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 0.0),
       leading: Container(
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          color: (isDestructive ? Colors.red : theme.colorScheme.primary).withOpacity(0.1),
+          color: effectiveIconColor.withOpacity(0.1),
           borderRadius: BorderRadius.circular(10),
         ),
-        child: Icon(icon, color: isDestructive ? Colors.red : theme.colorScheme.primary, size: 22),
+        child: Icon(icon, color: effectiveIconColor, size: 22),
       ),
-      title: Text(title, style: TextStyle(fontWeight: FontWeight.w600, color: color, fontSize: 15)),
+      title: Text(title, style: TextStyle(fontWeight: FontWeight.w600, color: textColor, fontSize: 15)),
+      // Only show subtitle if it's provided
+      subtitle: subtitle != null
+          ? Text(subtitle, style: Theme.of(context).textTheme.bodySmall)
+          : null,
       trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey),
       onTap: onTap,
     );
