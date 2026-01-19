@@ -44,6 +44,29 @@ class HomeScreen extends StatelessWidget {
     return counts;
   }
 
+  // --- NEW FUNCTION: Open Google Maps ---
+  Future<void> _launchCollegeMap(BuildContext context) async {
+    // REPLACE 'Your College Name' with your actual college name or coordinates
+    // Example: "MIT+University" or "18.5204,73.8567"
+    const String query = "Dr+J+J+Magdum+College+Of+Engineering+Jaysingpur";
+
+    final Uri googleMapsUrl = Uri.parse("https://www.google.com/maps/search/?api=1&query=$query");
+
+    try {
+      if (await canLaunchUrl(googleMapsUrl)) {
+        await launchUrl(googleMapsUrl, mode: LaunchMode.externalApplication);
+      } else {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Could not launch Maps.'))
+          );
+        }
+      }
+    } catch (e) {
+      debugPrint("Error launching map: $e");
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     // Logic to determine user roles
@@ -55,7 +78,7 @@ class HomeScreen extends StatelessWidget {
       appBar: AppBar(
         leading: Builder(
           builder: (context) => IconButton(
-              icon: const Icon(Icons.menu),
+              icon: const Icon(Icons.menu), // This is the "three lines" icon
               onPressed: () => Scaffold.of(context).openDrawer(),
               tooltip: 'Menu'
           ),
@@ -74,7 +97,6 @@ class HomeScreen extends StatelessWidget {
               icon: const Icon(Icons.campaign),
               tooltip: 'Manage Banners',
               onPressed: () {
-                // Navigate to ManageBannersScreen in College Admin mode (clubId: null)
                 Navigator.push(context, MaterialPageRoute(builder: (_) => const ManageBannersScreen(clubId: null)));
               },
             ),
@@ -236,17 +258,14 @@ class HomeScreen extends StatelessWidget {
         },
       ),
 
-      // --- UPDATED FLOATING ACTION BUTTON LOGIC ---
       floatingActionButton: _buildFloatingActionButton(context, isCollegeAdmin, isClubAdmin, isStudent),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
       bottomNavigationBar: _buildBottomNavBar(context),
     );
   }
 
-  // --- NEW HELPER METHOD FOR FAB ---
   Widget? _buildFloatingActionButton(BuildContext context, bool isCollegeAdmin, bool isClubAdmin, bool isStudent) {
     if (isCollegeAdmin) {
-      // College Admin: Create Club
       return FloatingActionButton(
         onPressed: () async {
           final result = await Navigator.push(
@@ -272,7 +291,6 @@ class HomeScreen extends StatelessWidget {
         child: const Icon(Icons.add),
       );
     } else if (isClubAdmin) {
-      // Club Admin: Create Event
       return FloatingActionButton(
         onPressed: () async {
           final homeState = context.read<HomeBloc>().state;
@@ -315,7 +333,6 @@ class HomeScreen extends StatelessWidget {
         child: const Icon(Icons.add),
       );
     } else if (isStudent) {
-      // Student: My Registrations Shortcut
       return FloatingActionButton(
         onPressed: () {
           Navigator.push(
@@ -333,9 +350,7 @@ class HomeScreen extends StatelessWidget {
     return null;
   }
 
-
-  // --- WIDGET BUILDER METHODS ---
-
+  // --- UPDATED DRAWER TO INCLUDE MAP ---
   Widget _buildAppDrawer(BuildContext context) {
     return Drawer(
       child: ListView(
@@ -359,7 +374,6 @@ class HomeScreen extends StatelessWidget {
             title: const Text('Home'),
             onTap: () {
               Navigator.pop(context);
-              // Already on Home, maybe refresh?
             },
           ),
           ListTile(
@@ -393,7 +407,21 @@ class HomeScreen extends StatelessWidget {
               Navigator.push(context, MaterialPageRoute(builder: (_) => ProfileScreen(user: user)));
             },
           ),
+
           const Divider(),
+
+          // --- NEW MAP BUTTON ---
+          ListTile(
+            leading: const Icon(Icons.map_outlined, color: Colors.blueAccent),
+            title: const Text('Location', style: TextStyle(color: Colors.blueAccent)),
+            onTap: () {
+              Navigator.pop(context);
+              _launchCollegeMap(context); // Calls the map function
+            },
+          ),
+
+          const Divider(),
+
           ListTile(
             leading: const Icon(Icons.logout, color: Colors.redAccent),
             title: const Text('Logout', style: TextStyle(color: Colors.redAccent)),
@@ -417,7 +445,6 @@ class HomeScreen extends StatelessWidget {
 
         final banners = snapshot.data ?? [];
         if (banners.isEmpty) {
-          // Show a default placeholder if no banners exist
           return _buildBannerCard(context, 'Welcome to ConnectEdu', Colors.purpleAccent.withOpacity(0.7));
         }
 
@@ -449,7 +476,7 @@ class HomeScreen extends StatelessWidget {
                         fit: BoxFit.cover,
                       ),
                     ),
-                    child: Container( // Gradient overlay for text readability
+                    child: Container(
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(16),
                         gradient: LinearGradient(

@@ -9,10 +9,12 @@ import 'package:connectedu_app/services/api_service.dart'; // --- ADD ---
 import 'package:connectedu_app/screens/event_details_screen.dart';
 import 'package:connectedu_app/screens/event_edit_screen.dart';
 import 'package:connectedu_app/screens/certificate_config_screen.dart'; // --- ADD ---
+import 'package:connectedu_app/widgets/skeleton_event_card.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+// import 'package:connectedu_app/widgets/skeleton_event_card.dart';
 
 // --- UPDATED ENUM ---
 enum EventAdminAction { update, delete, updateLink, designCertificate }
@@ -146,7 +148,12 @@ class EventListScreen extends StatelessWidget {
           },
           builder: (context, state) {
             if (state is EventListLoading) {
-              return const Center(child: CircularProgressIndicator());
+              // Instead of const Center(child: CircularProgressIndicator()), do this:
+              return ListView.builder(
+                padding: const EdgeInsets.all(16.0),
+                itemCount: 6, // Show 6 fake cards
+                itemBuilder: (context, index) => const SkeletonEventCard(),
+              );
             }
 
             EventListLoaded? loadedState;
@@ -264,15 +271,26 @@ class EventListScreen extends StatelessWidget {
                 height: 150,
                 child: ClipRRect( // Clip the image to rounded corners
                   borderRadius: BorderRadius.circular(8.0),
-                  child: (event.imageUrl != null && event.imageUrl!.isNotEmpty)
-                      ? CachedNetworkImage(
-                    imageUrl: event.imageUrl!,
-                    fit: BoxFit.cover,
-                    placeholder: (context, url) => Container(color: Colors.grey[300], child: const Center(child: CircularProgressIndicator())),
-                    errorWidget: (context, url, error) => _buildPlaceholderImage(context, event.name),
-                  )
+                  // child: (event.imageUrl != null && event.imageUrl!.isNotEmpty)
+                  //     ? CachedNetworkImage(
+                  //   imageUrl: event.imageUrl!,
+                  //   fit: BoxFit.cover,
+                  //   placeholder: (context, url) => Container(color: Colors.grey[300], child: const Center(child: CircularProgressIndicator())),
+                  //   errorWidget: (context, url, error) => _buildPlaceholderImage(context, event.name),
+                  // )
+                  child: Hero(
+                    // The tag MUST be unique per image. Using the URL is usually safe.
+                    // If URL is null, use the event ID string.
+                    tag: event.imageUrl ?? 'event_${event.id}',
+                    child: (event.imageUrl != null && event.imageUrl!.isNotEmpty)
+                        ? CachedNetworkImage(
+                      imageUrl: event.imageUrl!,
+                      fit: BoxFit.cover,
+                      // ... existing placeholder/error logic ...
+                    )
                       : _buildPlaceholderImage(context, event.name),
                 ),
+              ),
               ),
               const SizedBox(width: 16),
               Expanded(

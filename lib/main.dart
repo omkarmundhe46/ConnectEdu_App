@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:app_links/app_links.dart';
 import 'package:connectedu_app/bloc/auth_bloc.dart';
 import 'package:connectedu_app/bloc/home_bloc.dart';
+import 'package:connectedu_app/bloc/theme_cubit.dart';
 import 'package:connectedu_app/repositories/analytics_repository.dart';
 import 'package:connectedu_app/repositories/auth_repository.dart';
 import 'package:connectedu_app/repositories/banner_repository.dart';
@@ -45,8 +46,15 @@ void main() {
         RepositoryProvider.value(value: bannerRepository),
         RepositoryProvider.value(value: analyticsRepository),
       ],
-      child: BlocProvider(
-        create: (context) => AuthBloc(context.read<AuthRepository>())..add(AppStarted()),
+      child: MultiBlocProvider(
+        providers: [
+          BlocProvider(
+            create: (context) => AuthBloc(context.read<AuthRepository>())..add(AppStarted()),
+          ),
+          BlocProvider(
+            create: (context) => ThemeCubit(context.read<SecureStorageService>()),
+          ),
+        ],
         child: const MyApp(),
       ),
     ),
@@ -112,31 +120,35 @@ class _MyAppState extends State<MyApp> {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'ConnectEdu',
-      theme: AppTheme.lightTheme,
-      darkTheme: AppTheme.darkTheme,
-      themeMode: ThemeMode.system,
-      debugShowCheckedModeBanner: false,
-      home: BlocBuilder<AuthBloc, AuthState>(
-        builder: (context, state) {
-          if (state is AuthAuthenticated) {
-            return BlocProvider(
-              create: (context) => HomeBloc(
-                clubRepository: context.read<ClubRepository>(),
-                eventRepository: context.read<EventRepository>(),
-              )..add(LoadHomeData()),
-              child: HomeScreen(user: state.user),
-            );
-          }
-          if (state is AuthUnauthenticated || state is AuthFailure || state is AuthLoading) {
-            return const AuthNavigator();
-          }
-          return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
-          );
-        },
-      ),
+    return BlocBuilder<ThemeCubit, ThemeMode>(
+      builder: (context, themeMode) {
+        return MaterialApp(
+          title: 'ConnectEdu',
+          theme: AppTheme.lightTheme,
+          darkTheme: AppTheme.darkTheme,
+          themeMode: themeMode, // 4. Use the dynamic theme mode
+          debugShowCheckedModeBanner: false,
+          home: BlocBuilder<AuthBloc, AuthState>(
+            builder: (context, state) {
+              if (state is AuthAuthenticated) {
+                return BlocProvider(
+                  create: (context) => HomeBloc(
+                    clubRepository: context.read<ClubRepository>(),
+                    eventRepository: context.read<EventRepository>(),
+                  )..add(LoadHomeData()),
+                  child: HomeScreen(user: state.user),
+                );
+              }
+              if (state is AuthUnauthenticated || state is AuthFailure || state is AuthLoading) {
+                return const AuthNavigator();
+              }
+              return const Scaffold(
+                body: Center(child: CircularProgressIndicator()),
+              );
+            },
+          ),
+        );
+      },
     );
   }
 }

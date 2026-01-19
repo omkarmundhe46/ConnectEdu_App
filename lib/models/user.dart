@@ -21,7 +21,7 @@ class User {
     required this.department,
   });
 
-  // --- THIS IS THE FIX ---
+
   // Updated factory constructor to handle the decoded token map correctly.
   factory User.fromToken(Map<String, dynamic> decodedToken) {
     // Safely extract the roles list. It might be null or not a list.

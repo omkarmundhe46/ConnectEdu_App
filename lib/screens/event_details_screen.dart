@@ -50,14 +50,9 @@ class EventDetailsScreen extends StatelessWidget {
       child: BlocBuilder<EventDetailBloc, EventDetailState>(
         builder: (context, state) {
 
-          // Define variables inside the builder
-          // 1. Check if the user is a listed member
           final bool isClubMember = (state is EventDetailLoaded) ? state.isClubMember : false;
-          // 2. Check if the user is the admin of THIS club
           final bool isClubAdmin = (currentUser.role == 'CLUB_ADMIN' && currentUser.managedClubId == club.id);
-          // 3. Combine the checks
           final bool canChat = isClubMember || isClubAdmin;
-          // 4. Check if event is upcoming
           final bool isEventUpcoming = event.status == 'UPCOMING';
 
           return Scaffold(
@@ -68,7 +63,6 @@ class EventDetailsScreen extends StatelessWidget {
               ],
             ),
             bottomNavigationBar: _buildBottomButton(context),
-            // Now these variables are defined
             floatingActionButton: (canChat && isEventUpcoming)
                 ? FloatingActionButton(
               onPressed: () {
@@ -123,13 +117,34 @@ class EventDetailsScreen extends StatelessWidget {
       ],
       flexibleSpace: FlexibleSpaceBar(
         stretchModes: const [StretchMode.zoomBackground],
-        background: event.imageUrl != null && event.imageUrl!.isNotEmpty
-            ? CachedNetworkImage(
-          imageUrl: event.imageUrl!,
-          fit: BoxFit.cover,
-          errorWidget: (context, url, error) => _buildPlaceholderImage(context, event.name),
-        )
-            : _buildPlaceholderImage(context, event.name),
+        // --- UPDATED: Added Stack for Hero and Gradient ---
+        background: Stack(
+          fit: StackFit.expand,
+          children: [
+            Hero(
+              // MUST match the tag in EventListScreen
+              tag: event.imageUrl ?? 'event_${event.id}',
+              child: event.imageUrl != null && event.imageUrl!.isNotEmpty
+                  ? CachedNetworkImage(
+                imageUrl: event.imageUrl!,
+                fit: BoxFit.cover,
+                errorWidget: (context, url, error) => _buildPlaceholderImage(context, event.name),
+              )
+                  : _buildPlaceholderImage(context, event.name),
+            ),
+            // Gradient to make white text (if any) readable
+            const DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.bottomCenter,
+                  end: Alignment.topCenter,
+                  colors: [Colors.black54, Colors.transparent],
+                  stops: [0.0, 0.5],
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -219,7 +234,6 @@ class EventDetailsScreen extends StatelessWidget {
             );
           }
 
-          // Determine how many faces to show (max 3)
           final int showCount = participants.length > 3 ? 3 : participants.length;
           final int remainingCount = participants.length - showCount;
 
@@ -229,17 +243,17 @@ class EventDetailsScreen extends StatelessWidget {
               Row(
                 children: [
                   SizedBox(
-                    width: 20.0 * showCount + 20, // Calculate width dynamically
+                    width: 20.0 * showCount + 20,
                     height: 36,
                     child: Stack(
                       children: List.generate(showCount, (index) {
                         final participant = participants[index];
                         return Positioned(
-                          left: index * 20.0, // Overlap by shifting left
+                          left: index * 20.0,
                           child: Container(
                             decoration: BoxDecoration(
                               shape: BoxShape.circle,
-                              border: Border.all(color: Theme.of(context).scaffoldBackgroundColor, width: 2), // White border for separation
+                              border: Border.all(color: Theme.of(context).scaffoldBackgroundColor, width: 2),
                             ),
                             child: CircleAvatar(
                               radius: 16,
@@ -266,7 +280,6 @@ class EventDetailsScreen extends StatelessWidget {
                 ],
               ),
 
-              // Invite Button
               OutlinedButton.icon(
                 icon: const Icon(Icons.share, size: 16),
                 label: const Text('Invite'),
@@ -280,7 +293,6 @@ class EventDetailsScreen extends StatelessWidget {
             ],
           );
         }
-        // Loading State
         return Container(
           height: 40,
           alignment: Alignment.centerLeft,
@@ -350,25 +362,21 @@ class EventDetailsScreen extends StatelessWidget {
       ),
       child: BlocBuilder<EventDetailBloc, EventDetailState>(
         builder: (context, state) {
-          // Default: Loading state
           if (state is EventDetailLoading || state is EventDetailInitial) {
             return const Center(child: CircularProgressIndicator());
           }
 
           if (state is EventDetailError) {
-            return const SizedBox.shrink(); // Don't show a button on error
+            return const SizedBox.shrink();
           }
 
-          // We must be in EventDetailLoaded state here
           final loadedState = state as EventDetailLoaded;
           bool isEventOver = event.status == 'COMPLETED';
           String userRole = currentUser.role;
 
-          // --- 1. CHECK IF USER IS STAFF OF *THIS* CLUB ---
           bool isThisClubStaff = (userRole == 'CLUB_ADMIN' && currentUser.managedClubId == club.id) ||
               (userRole == 'CLUB_MEMBER' && loadedState.isClubMember);
 
-          // Priority 1: User is already registered for the event.
           if (loadedState.isRegistered) {
             return Row(
               children: [
@@ -376,8 +384,6 @@ class EventDetailsScreen extends StatelessWidget {
                   child: OutlinedButton.icon(
                     icon: const Icon(Icons.download_outlined),
                     label: const Text('Certificate'),
-                    // --- START OF CHANGE ---
-                    // Make the onPressed async
                     onPressed: isEventOver ? () async {
                       final scaffoldMessenger = ScaffoldMessenger.of(context);
                       scaffoldMessenger.showSnackBar(
@@ -394,7 +400,6 @@ class EventDetailsScreen extends StatelessWidget {
                       );
 
                       try {
-                        // Call the new repository
                         await context.read<CertificateRepository>().downloadCertificate(
                           event.id,
                           currentUser.id,
@@ -417,8 +422,6 @@ class EventDetailsScreen extends StatelessWidget {
                     ),
                   ),
                 ),
-                // --- 2. SHOW JOIN BUTTON IF STAFF ---
-                // If they are registered, they might also be staff. Show Join button.
                 if (isThisClubStaff && event.meetingLink != null && event.meetingLink!.isNotEmpty) ...[
                   const SizedBox(width: 16),
                   Expanded(
@@ -437,25 +440,18 @@ class EventDetailsScreen extends StatelessWidget {
             );
           }
 
-          // Priority 2: Event is over and user is not registered.
           if (isEventOver) {
             return const SizedBox.shrink();
           }
-
-          // --- 3. SHOW ADMIN/STAFF BUTTONS ---
-          // If the user is staff AND not registered, show the admin buttons.
 
           if (isThisClubStaff) {
             return _buildAdminButtonRow(context, event);
           }
 
-          // Priority 4: User is COLLEGE_ADMIN (but not staff of this club)
           if (userRole == 'COLLEGE_ADMIN') {
-            return const SizedBox.shrink(); // College Admins can't register
+            return const SizedBox.shrink();
           }
 
-          // Priority 5: User is a USER or a CLUB_MEMBER of a DIFFERENT club.
-          // Both are allowed to register.
           return _buildRegisterButton(context);
         },
       ),
@@ -472,7 +468,6 @@ class EventDetailsScreen extends StatelessWidget {
             icon: const Icon(Icons.download_outlined),
             label: const Text('Excel'),
             onPressed: () async {
-              // Show a loading snackbar
               final scaffoldMessenger = ScaffoldMessenger.of(context);
               scaffoldMessenger.showSnackBar(
                 const SnackBar(
@@ -483,16 +478,15 @@ class EventDetailsScreen extends StatelessWidget {
                       Text('Downloading Excel file...'),
                     ],
                   ),
-                  duration: Duration(seconds: 30), // Keep it open
+                  duration: Duration(seconds: 30),
                 ),
               );
 
               try {
-                // Call the repository method
                 await context.read<EventRepository>().downloadParticipantsExcel(
                   club.id,
                   event.id,
-                  event.name.replaceAll(' ', '_'), // Create a safe filename
+                  event.name.replaceAll(' ', '_'),
                 );
                 scaffoldMessenger.removeCurrentSnackBar();
                 scaffoldMessenger.showSnackBar(
@@ -516,7 +510,6 @@ class EventDetailsScreen extends StatelessWidget {
           child: ElevatedButton.icon(
             icon: const Icon(Icons.videocam_outlined),
             label: const Text('Join'),
-            // Enable/disable based on meeting link
             onPressed: canJoin ? () => _launchMeetingLink(context, event.meetingLink!) : null,
             style: ElevatedButton.styleFrom(
               padding: const EdgeInsets.symmetric(vertical: 16),
@@ -528,7 +521,6 @@ class EventDetailsScreen extends StatelessWidget {
     );
   }
 
-  // --- ADD THIS HELPER METHOD ---
   Future<void> _launchMeetingLink(BuildContext context, String url) async {
     final Uri uri = Uri.parse(url);
     if (!await launchUrl(uri)) {
@@ -540,7 +532,6 @@ class EventDetailsScreen extends StatelessWidget {
     }
   }
 
-  // Helper widget for the Register button
   Widget _buildRegisterButton(BuildContext context) {
     return ElevatedButton(
       onPressed: () {

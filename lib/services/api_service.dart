@@ -7,12 +7,12 @@
     final SecureStorageService _secureStorageService;
 
 
-    static const String _baseUrl = kIsWeb ? 'http://localhost:8080' : 'http://10.234.78.92:8080';   // run on docker and run on phone
+    static const String _baseUrl = kIsWeb ? 'http://localhost:8080' : 'http://10.15.7.92:8080';   // run on docker and run on phone
     // static const String _baseUrl = 'https://toniest-wilda-unfabulously.ngrok-free.dev';             //  with docker for oauth
 
     // static const String _baseUrl = 'http://10.82.198.92:8080'; // <-- Use YOUR phone address
 
-    static const String websocketUrl = kIsWeb ? 'ws://localhost:8080/ws' : 'ws://10.234.78.92:8080/ws';
+    static const String websocketUrl = kIsWeb ? 'ws://localhost:8080/ws' : 'ws://10.15.7.92:8080/ws';
   
     ApiService(this._secureStorageService) : _dio = Dio(BaseOptions(baseUrl: _baseUrl)) {
       _dio.interceptors.add(

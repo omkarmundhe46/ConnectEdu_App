@@ -5,6 +5,7 @@ import 'package:connectedu_app/screens/analytics_dashboard_screen.dart';
 import 'package:connectedu_app/screens/change_password_screen.dart';
 import 'package:connectedu_app/screens/edit_profile_screen.dart';
 import 'package:connectedu_app/screens/my_registrations.dart';
+import 'package:connectedu_app/screens/settings_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:share_plus/share_plus.dart'; // For Invite Friend
@@ -219,9 +220,17 @@ class ProfileScreen extends StatelessWidget {
                                 _launchPrivacyPolicy();
                               }),
 
-                              _buildProfileOption(context, icon: Icons.settings_outlined, title: 'Settings', onTap: () {
-                                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Settings not implemented')));
-                              }),
+                              _buildProfileOption(
+                                  context,
+                                  icon: Icons.settings_outlined,
+                                  title: 'Settings',
+                                  onTap: () {
+                                    Navigator.push(
+                                        context,
+                                        MaterialPageRoute(builder: (_) => const SettingsScreen())
+                                    );
+                                  }
+                              ),
 
                               const Divider(),
 
