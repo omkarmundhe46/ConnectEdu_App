@@ -5,16 +5,20 @@ class Club {
   final String name;
   final String description;
   final int adminId;
-  final String category; // New Field
+  final String category;
   final String? logoUrl;
+  final String adminName;
+  final String adminEmail;
 
   const Club({
     required this.id,
     required this.name,
     required this.description,
     required this.adminId,
-    required this.category, // Required
+    required this.category,
     this.logoUrl,
+    this.adminName = 'Loading...',
+    this.adminEmail = '',
   });
 
   factory Club.fromJson(Map<String, dynamic> json) {
@@ -23,6 +27,8 @@ class Club {
       name: json['name'] as String,
       description: json['description'] as String,
       adminId: json['adminId'] as int,
+      adminName: json['adminName'] ?? 'Unassigned', // Map it
+      adminEmail: json['adminEmail'] ?? '',
       // Default to 'ALL' if the backend sends null (e.g. for old data)
       category: json['category'] ?? 'ALL',
       logoUrl: json['logoUrl'] as String?,

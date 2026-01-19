@@ -1,9 +1,13 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:connectedu_app/bloc/auth_bloc.dart';
+import 'package:connectedu_app/bloc/club_list_bloc.dart';
 import 'package:connectedu_app/models/user.dart';
+import 'package:connectedu_app/repositories/club_repository.dart';
+import 'package:connectedu_app/repositories/event_repository.dart';
 import 'package:connectedu_app/screens/analytics_dashboard_screen.dart';
 import 'package:connectedu_app/screens/change_password_screen.dart';
 import 'package:connectedu_app/screens/edit_profile_screen.dart';
+import 'package:connectedu_app/screens/manage_club_admins_screen.dart';
 import 'package:connectedu_app/screens/my_registrations.dart';
 import 'package:connectedu_app/screens/settings_screen.dart';
 import 'package:flutter/material.dart';
@@ -200,6 +204,35 @@ class ProfileScreen extends StatelessWidget {
                                         Navigator.push(
                                           context,
                                           MaterialPageRoute(builder: (_) => AnalyticsDashboardScreen(user: currentUser)),
+                                        );
+                                      },
+                                    ),
+                                    const Divider(height: 1),
+                                  ],
+                                ),
+
+                              if (currentUser.role == 'COLLEGE_ADMIN')
+                                Column(
+                                  children: [
+                                    _buildProfileOption(
+                                      context,
+                                      icon: Icons.admin_panel_settings_outlined,
+                                      iconColor: Colors.orange,
+                                      title: 'Club Governance',
+                                      subtitle: 'Manage club admins',
+                                      onTap: () {
+                                        Navigator.push(
+                                          context,
+                                          MaterialPageRoute(
+                                            builder: (_) => BlocProvider(
+                                              // FIX: Create a NEW Bloc instance here
+                                              create: (context) => ClubListBloc(
+                                                clubRepository: context.read<ClubRepository>(),
+                                                eventRepository: context.read<EventRepository>(),
+                                              ),
+                                              child: const ManageClubAdminsScreen(),
+                                            ),
+                                          ),
                                         );
                                       },
                                     ),
