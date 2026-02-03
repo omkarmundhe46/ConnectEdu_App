@@ -7,14 +7,19 @@
     final SecureStorageService _secureStorageService;
 
 
-    static const String _baseUrl = kIsWeb ? 'http://localhost:8080' : 'http://10.15.7.92:8080';   // run on docker and run on phone
+    static const String _baseUrl = kIsWeb ? 'http://localhost:8080' : 'http://10.71.204.92:8080';   // run on docker and run on phone
     // static const String _baseUrl = 'https://toniest-wilda-unfabulously.ngrok-free.dev';             //  with docker for oauth
 
     // static const String _baseUrl = 'http://10.82.198.92:8080'; // <-- Use YOUR phone address
 
-    static const String websocketUrl = kIsWeb ? 'ws://localhost:8080/ws' : 'ws://10.15.7.92:8080/ws';
-  
-    ApiService(this._secureStorageService) : _dio = Dio(BaseOptions(baseUrl: _baseUrl)) {
+    static const String websocketUrl = kIsWeb ? 'ws://localhost:8080/ws' : 'ws://10.71.204.92:8080/ws';
+
+    ApiService(this._secureStorageService)
+        : _dio = Dio(BaseOptions(
+      baseUrl: _baseUrl,
+      contentType: Headers.jsonContentType, // Default to JSON
+    )) {
+      // Add Interceptor to attach Token automatically
       _dio.interceptors.add(
         InterceptorsWrapper(
           onRequest: (options, handler) async {
@@ -25,14 +30,21 @@
             return handler.next(options);
           },
           onError: (DioException e, handler) {
-            // You can add global error handling here, e.g., for 401 Unauthorized
             debugPrint('API Error: ${e.response?.statusCode} - ${e.response?.data}');
             return handler.next(e);
           },
         ),
       );
     }
-  
+
     Dio get dio => _dio;
+
+    Future<Response> get(String path, {Map<String, dynamic>? queryParameters}) async {
+      return await _dio.get(path, queryParameters: queryParameters);
+    }
+
+    Future<Response> post(String path, dynamic data) async {
+      return await _dio.post(path, data: data);
+    }
   }
   

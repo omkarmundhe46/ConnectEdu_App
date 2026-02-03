@@ -15,6 +15,7 @@ import 'package:connectedu_app/repositories/event_repository.dart';
 import 'package:connectedu_app/repositories/notification_repository.dart';
 import 'package:connectedu_app/screens/AllUpcomingEventsScreen.dart';
 import 'package:connectedu_app/screens/ManageBannersScreen.dart';
+import 'package:connectedu_app/screens/chat_screen.dart'; // --- NEW IMPORT ---
 import 'package:connectedu_app/screens/club_edit_screen.dart';
 import 'package:connectedu_app/screens/club_list_screen.dart';
 import 'package:connectedu_app/screens/event_details_screen.dart';
@@ -44,12 +45,9 @@ class HomeScreen extends StatelessWidget {
     return counts;
   }
 
-  // --- NEW FUNCTION: Open Google Maps ---
+  // --- Open Google Maps ---
   Future<void> _launchCollegeMap(BuildContext context) async {
-    // REPLACE 'Your College Name' with your actual college name or coordinates
-    // Example: "MIT+University" or "18.5204,73.8567"
     const String query = "Dr+J+J+Magdum+College+Of+Engineering+Jaysingpur";
-
     final Uri googleMapsUrl = Uri.parse("https://www.google.com/maps/search/?api=1&query=$query");
 
     try {
@@ -74,11 +72,14 @@ class HomeScreen extends StatelessWidget {
     final bool isClubAdmin = user.role == 'CLUB_ADMIN';
     final bool isStudent = user.role == 'USER' || user.role == 'CLUB_MEMBER';
 
+    // We pre-calculate the role-based button
+    final Widget? roleBasedButton = _buildFloatingActionButton(context, isCollegeAdmin, isClubAdmin, isStudent);
+
     return Scaffold(
       appBar: AppBar(
         leading: Builder(
           builder: (context) => IconButton(
-              icon: const Icon(Icons.menu), // This is the "three lines" icon
+              icon: const Icon(Icons.menu),
               onPressed: () => Scaffold.of(context).openDrawer(),
               tooltip: 'Menu'
           ),
@@ -122,16 +123,31 @@ class HomeScreen extends StatelessWidget {
             onPressed: () => context.read<AuthBloc>().add(LoggedOut()),
           ),
         ],
-        bottom: PreferredSize(
-            preferredSize: const Size.fromHeight(20.0),
-            child: Padding(
-              padding: const EdgeInsets.only(bottom: 8.0),
-              child: Text('ConnectEdu', style: TextStyle(fontSize: 14, color: Theme.of(context).primaryColor, fontWeight: FontWeight.w500)),
-            )
-        ),
       ),
-      drawer: _buildAppDrawer(context),
-      body: BlocConsumer<HomeBloc, HomeState>(
+      //   bottom: PreferredSize(
+      //       preferredSize: const Size.fromHeight(20.0),
+      //       child: Padding(
+      //         padding: const EdgeInsets.only(bottom: 8.0),
+      //         child: Text('ConnectEdu', style: TextStyle(fontSize: 14, color: Theme.of(context).primaryColor, fontWeight: FontWeight.w500)),
+      //       )
+      //   ),
+      // ),
+      // drawer: _buildAppDrawer(context),
+      // body: BlocConsumer<HomeBloc, HomeState>(
+          drawer: _buildAppDrawer(context),
+
+          // ✅ ROLE BASED FAB — SAME AS BEFORE
+          floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
+          floatingActionButton: roleBasedButton,
+
+          bottomNavigationBar: _buildBottomNavBar(context),
+
+          // ✅ BODY WRAPPED IN STACK (ONLY CHANGE)
+          body: Stack(
+            children: [
+
+            // ---------------- ORIGINAL BODY ----------------
+            BlocConsumer<HomeBloc, HomeState>(
         listener: (context, state) {
           if (state is HomeError) {
             ScaffoldMessenger.of(context).showSnackBar(
@@ -258,15 +274,35 @@ class HomeScreen extends StatelessWidget {
         },
       ),
 
-      floatingActionButton: _buildFloatingActionButton(context, isCollegeAdmin, isClubAdmin, isStudent),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-      bottomNavigationBar: _buildBottomNavBar(context),
+      // --- UPDATED FLOATING ACTION BUTTON LOGIC ---
+              Positioned(
+                right: 16,
+                bottom: 10, // above BottomNavigationBar
+                child: FloatingActionButton(
+                  heroTag: "ai_chat",
+                  backgroundColor: Colors.purpleAccent,
+                  tooltip: "AI Assistant",
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => ChatScreen(currentUser: user),
+                      ),
+                    );
+                  },
+                  child: const Icon(Icons.auto_awesome, color: Colors.white),
+                ),
+              ),
+            ],
+          ),
     );
   }
 
+  // --- HELPER METHOD FOR ROLE-BASED FAB ---
   Widget? _buildFloatingActionButton(BuildContext context, bool isCollegeAdmin, bool isClubAdmin, bool isStudent) {
     if (isCollegeAdmin) {
       return FloatingActionButton(
+        heroTag: "role_fab",
         onPressed: () async {
           final result = await Navigator.push(
             context,
@@ -292,6 +328,7 @@ class HomeScreen extends StatelessWidget {
       );
     } else if (isClubAdmin) {
       return FloatingActionButton(
+        heroTag: "role_fab",
         onPressed: () async {
           final homeState = context.read<HomeBloc>().state;
           Club? managedClub;
@@ -334,6 +371,7 @@ class HomeScreen extends StatelessWidget {
       );
     } else if (isStudent) {
       return FloatingActionButton(
+        heroTag: "role_fab",
         onPressed: () {
           Navigator.push(
               context,
@@ -350,7 +388,9 @@ class HomeScreen extends StatelessWidget {
     return null;
   }
 
-  // --- UPDATED DRAWER TO INCLUDE MAP ---
+
+  // --- WIDGET BUILDER METHODS ---
+
   Widget _buildAppDrawer(BuildContext context) {
     return Drawer(
       child: ListView(
@@ -410,13 +450,12 @@ class HomeScreen extends StatelessWidget {
 
           const Divider(),
 
-          // --- NEW MAP BUTTON ---
           ListTile(
             leading: const Icon(Icons.map_outlined, color: Colors.blueAccent),
             title: const Text('Location', style: TextStyle(color: Colors.blueAccent)),
             onTap: () {
               Navigator.pop(context);
-              _launchCollegeMap(context); // Calls the map function
+              _launchCollegeMap(context);
             },
           ),
 

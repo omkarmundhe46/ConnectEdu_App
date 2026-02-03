@@ -7,6 +7,7 @@ import 'package:connectedu_app/repositories/analytics_repository.dart';
 import 'package:connectedu_app/repositories/auth_repository.dart';
 import 'package:connectedu_app/repositories/banner_repository.dart';
 import 'package:connectedu_app/repositories/certificate-service.dart';
+import 'package:connectedu_app/repositories/chat_repository.dart';
 import 'package:connectedu_app/repositories/club_repository.dart';
 import 'package:connectedu_app/repositories/discussion_repository.dart';
 import 'package:connectedu_app/repositories/event_repository.dart';
@@ -31,6 +32,7 @@ void main() {
   final DiscussionRepository discussionRepository = DiscussionRepository(apiService);
   final BannerRepository bannerRepository = BannerRepository(apiService);
   final AnalyticsRepository analyticsRepository = AnalyticsRepository(apiService);
+  final ChatRepository chatRepository = ChatRepository(apiService);
 
   runApp(
     MultiRepositoryProvider(
@@ -45,6 +47,7 @@ void main() {
         RepositoryProvider.value(value: discussionRepository),
         RepositoryProvider.value(value: bannerRepository),
         RepositoryProvider.value(value: analyticsRepository),
+        RepositoryProvider.value(value: chatRepository),
       ],
       child: MultiBlocProvider(
         providers: [
