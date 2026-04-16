@@ -1,4 +1,4 @@
-# 🎓 ConnectedU – Smart College Portal (Microservices Architecture)
+# 🎓 ConnectedU – Smart Club And Event Coordination Platform (Microservices Architecture)
 
 ConnectedU is a **modern, scalable college management platform** built using **Spring Boot Microservices** and a **Flutter frontend**. It enables seamless interaction between students, clubs, and administrators with features like event management, real-time discussions, certificate generation, and notifications.
 
