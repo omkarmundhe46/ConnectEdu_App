@@ -4,7 +4,7 @@ ConnectedU is a **modern, scalable college management platform** built using **S
 
 ---
 
-<img width="1080" height="2408" alt="Screenshot_20260320_105826" src="https://github.com/user-attachments/assets/430a6617-fd0d-4308-917a-29169001d92e" />
+<img width="108" height="240" alt="Screenshot_20260320_105826" src="https://github.com/user-attachments/assets/430a6617-fd0d-4308-917a-29169001d92e" />
 <img width="1080" height="2408" alt="Screenshot_20260320_105820" src="https://github.com/user-attachments/assets/f7392f44-3326-4d34-a0d2-d5bf5d29d346" />
 <img width="1080" height="2408" alt="Screenshot_20260320_105803" src="https://github.com/user-attachments/assets/7c7cc0f1-8323-4560-8ea1-50ea7ddfe27a" />
 <img width="1080" height="2408" alt="Screenshot_20260320_105737" src="https://github.com/user-attachments/assets/f9f74b03-612a-4015-ad08-e6d4a454d46e" />
