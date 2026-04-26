@@ -20,6 +20,8 @@ dependencies:
 
   flutter_otp_text_field: ^1.1.1
 
+  pin_code_fields: ^8.0.1
+
   permission_handler: ^11.3.1
 
   flutter_html: ^3.0.0-beta.2
@@ -69,6 +71,7 @@ dev_dependencies:
     sdk: flutter
 
   flutter_lints: ^5.0.0
+  flutter_launcher_icons: ^0.14.3
 
 flutter:
 
@@ -89,3 +92,8 @@ flutter_native_splash:
     image_dark: assets/images/logo11.png
 
   web: false
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/images/logo1.png" # Point this to your preferred logo
+  min_sdk_android: 21

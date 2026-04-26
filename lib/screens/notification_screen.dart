@@ -1,8 +1,6 @@
 import 'package:connectedu_app/bloc/notification_bloc/notification_bloc.dart';
 import 'package:connectedu_app/models/notification_log.dart';
-// --- ADD THIS IMPORT ---
 import 'package:connectedu_app/screens/notification_detail_screen.dart';
-// --- END OF IMPORT ---
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';

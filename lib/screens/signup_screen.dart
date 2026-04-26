@@ -2,6 +2,7 @@ import 'package:connectedu_app/repositories/auth_repository.dart';
 import 'package:connectedu_app/screens/verification_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+
 class SignUpScreen extends StatefulWidget {
   final VoidCallback onSignInTapped;
   const SignUpScreen({super.key, required this.onSignInTapped});
@@ -22,12 +23,15 @@ class _SignUpScreenState extends State<SignUpScreen> {
   bool _isConfirmPasswordVisible = false;
 
   void _signUp() async {
+    // 1. Check if passwords match
     if (_passwordController.text != _confirmPasswordController.text) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Passwords do not match!"), backgroundColor: Colors.red),
       );
       return;
     }
+
+    // 2. Check if fields are empty
     if (_nameController.text.isEmpty ||
         _emailController.text.isEmpty ||
         _passwordController.text.isEmpty ||
@@ -38,20 +42,32 @@ class _SignUpScreenState extends State<SignUpScreen> {
       return;
     }
 
+    // 3. NEW: Validate Email Format using Regex
+    final emailRegex = RegExp(r"^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,6}$");
+    if (!emailRegex.hasMatch(_emailController.text.trim())) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text("Invalid email format. Please use a valid email address."),
+            backgroundColor: Colors.red
+        ),
+      );
+      return;
+    }
+
     setState(() {
       _isLoading = true;
     });
 
     try {
-      // Get the repository using context.read
       final authRepository = context.read<AuthRepository>();
-      final userEmail = _emailController.text;
+      // Use .trim() to ensure no accidental spaces break the backend validation
+      final userEmail = _emailController.text.trim();
 
       await authRepository.register(
-        name: _nameController.text,
+        name: _nameController.text.trim(),
         email: userEmail,
         password: _passwordController.text,
-        department: _departmentController.text,
+        department: _departmentController.text.trim(),
       );
 
       if (mounted) {
@@ -59,7 +75,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
           const SnackBar(content: Text("Verification code sent! Please check your email."), backgroundColor: Colors.green),
         );
 
-        // We push the VerificationScreen and wait for a result.
         final result = await Navigator.push(
           context,
           MaterialPageRoute(
@@ -67,8 +82,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
           ),
         );
 
-        // If the result is 'true', it means verification was successful.
-        // We then call the callback to toggle the AuthNavigator to the LoginScreen.
         if (result == true && mounted) {
           widget.onSignInTapped();
         }
@@ -113,7 +126,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 ),
                 const SizedBox(height: 24),
 
-                // Name, Email, Password, Confirm Password Fields...
                 TextField(
                   controller: _nameController,
                   decoration: const InputDecoration(
@@ -133,7 +145,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 const SizedBox(height: 16),
                 TextField(
                   controller: _passwordController,
-                  obscureText: !_isPasswordVisible, // Use state
+                  obscureText: !_isPasswordVisible,
                   decoration: InputDecoration(
                     hintText: 'Your password',
                     prefixIcon: const Icon(Icons.lock_outline),
@@ -154,7 +166,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 const SizedBox(height: 16),
                 TextField(
                   controller: _confirmPasswordController,
-                  obscureText: !_isConfirmPasswordVisible, // Use separate state
+                  obscureText: !_isConfirmPasswordVisible,
                   decoration: InputDecoration(
                     hintText: 'Confirm password',
                     prefixIcon: const Icon(Icons.lock_outline),
@@ -183,7 +195,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
                 const SizedBox(height: 24),
 
-                // Sign Up Button
                 _isLoading
                     ? const Center(child: CircularProgressIndicator())
                     : ElevatedButton(
@@ -199,7 +210,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 ),
                 const SizedBox(height: 32),
 
-                // OR Divider
                 const Row(
                   children: [
                     Expanded(child: Divider()),
@@ -212,7 +222,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 ),
                 const SizedBox(height: 32),
 
-                // Social Logins
                 _buildSocialLoginButton(
                     'Login with Google',
                     'assets/images/google_logo.png',
@@ -227,7 +236,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
                 const SizedBox(height: 48),
 
-                // Already have an account?
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
