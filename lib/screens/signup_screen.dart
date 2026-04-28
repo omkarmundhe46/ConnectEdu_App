@@ -1,7 +1,9 @@
 import 'package:connectedu_app/repositories/auth_repository.dart';
 import 'package:connectedu_app/screens/verification_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:url_launcher/url_launcher.dart'; // <-- 1. ADDED URL LAUNCHER IMPORT
 
 class SignUpScreen extends StatefulWidget {
   final VoidCallback onSignInTapped;
@@ -22,8 +24,37 @@ class _SignUpScreenState extends State<SignUpScreen> {
   bool _isPasswordVisible = false;
   bool _isConfirmPasswordVisible = false;
 
+  // --- 2. ADDED GOOGLE LOGIN METHOD ---
+  Future<void> _loginWithGoogle() async {
+    final Uri url = Uri.parse('https://toniest-wilda-unfabulously.ngrok-free.dev/oauth2/authorization/google');
+
+    if (await canLaunchUrl(url)) {
+      await launchUrl(url, mode: LaunchMode.externalApplication);
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not launch browser. Please try again.'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
+  // --- 3. ADDED FACEBOOK LOGIN METHOD ---
+  Future<void> _loginWithFacebook() async {
+    final Uri url = Uri.parse('https://toniest-wilda-unfabulously.ngrok-free.dev/oauth2/authorization/facebook');
+
+    if (await canLaunchUrl(url)) {
+      await launchUrl(url, mode: LaunchMode.externalApplication);
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not launch browser. Please try again.'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
   void _signUp() async {
-    // 1. Check if passwords match
     if (_passwordController.text != _confirmPasswordController.text) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Passwords do not match!"), backgroundColor: Colors.red),
@@ -31,18 +62,26 @@ class _SignUpScreenState extends State<SignUpScreen> {
       return;
     }
 
-    // 2. Check if fields are empty
-    if (_nameController.text.isEmpty ||
-        _emailController.text.isEmpty ||
+    if (_nameController.text.trim().isEmpty ||
+        _emailController.text.trim().isEmpty ||
         _passwordController.text.isEmpty ||
-        _departmentController.text.isEmpty) {
+        _departmentController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Please fill all fields!"), backgroundColor: Colors.red),
       );
       return;
     }
 
-    // 3. NEW: Validate Email Format using Regex
+    if (RegExp(r'[0-9]').hasMatch(_nameController.text.trim())) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+            content: Text("Full name cannot contain numbers."),
+            backgroundColor: Colors.red
+        ),
+      );
+      return;
+    }
+
     final emailRegex = RegExp(r"^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,6}$");
     if (!emailRegex.hasMatch(_emailController.text.trim())) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -60,7 +99,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
     try {
       final authRepository = context.read<AuthRepository>();
-      // Use .trim() to ensure no accidental spaces break the backend validation
       final userEmail = _emailController.text.trim();
 
       await authRepository.register(
@@ -132,6 +170,9 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     hintText: 'Full name',
                     prefixIcon: Icon(Icons.person_outline),
                   ),
+                  inputFormatters: [
+                    FilteringTextInputFormatter.deny(RegExp(r'[0-9]')),
+                  ],
                 ),
                 const SizedBox(height: 16),
                 TextField(
@@ -222,16 +263,19 @@ class _SignUpScreenState extends State<SignUpScreen> {
                 ),
                 const SizedBox(height: 32),
 
+                // --- 4. PASSED THE METHODS TO THE BUTTONS ---
                 _buildSocialLoginButton(
-                    'Login with Google',
+                    'Continue with Google',
                     'assets/images/google_logo.png',
-                    isDarkMode
+                    isDarkMode,
+                    _loginWithGoogle
                 ),
                 const SizedBox(height: 16),
                 _buildSocialLoginButton(
-                    'Login with Facebook',
+                    'Continue with Facebook',
                     'assets/images/facebook_logo.png',
-                    isDarkMode
+                    isDarkMode,
+                    _loginWithFacebook
                 ),
 
                 const SizedBox(height: 48),
@@ -254,12 +298,11 @@ class _SignUpScreenState extends State<SignUpScreen> {
     );
   }
 
-  Widget _buildSocialLoginButton(String text, String assetPath, bool isDarkMode) {
+  // --- 5. UPDATED WIDGET DEFINITION TO ACCEPT ONPRESSED CALLBACK ---
+  Widget _buildSocialLoginButton(String text, String assetPath, bool isDarkMode, VoidCallback onPressed) {
     return OutlinedButton.icon(
       icon: Image.asset(assetPath, height: 24),
-      onPressed: () {
-        // TODO: Implement social login
-      },
+      onPressed: onPressed, // <-- Connects the tap to the method
       label: Text(text),
       style: OutlinedButton.styleFrom(
         foregroundColor: isDarkMode ? Colors.white : Colors.black87,

@@ -220,11 +220,28 @@ class _RegistrationFormScreenState extends State<RegistrationFormScreen> {
             children: [
               Text('Please fill in your details.', style: Theme.of(context).textTheme.titleMedium),
               const SizedBox(height: 24),
-              TextFormField(
-                controller: _collegeController,
-                decoration: const InputDecoration(labelText: 'College Name', border: OutlineInputBorder(), prefixIcon: Icon(Icons.school_outlined)),
-                validator: (v) => (v == null || v.isEmpty) ? 'Required' : null,
+            TextFormField(
+              controller: _collegeController,
+              decoration: const InputDecoration(
+                  labelText: 'College Name',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.school_outlined)
               ),
+              // 1. Physically blocks numbers from being typed into the field
+              inputFormatters: [
+                FilteringTextInputFormatter.deny(RegExp(r'[0-9]')),
+              ],
+              // 2. Validates the final input (catches copy-pasted numbers or empty fields)
+              validator: (v) {
+                if (v == null || v.trim().isEmpty) {
+                  return 'Required';
+                }
+                if (RegExp(r'[0-9]').hasMatch(v)) {
+                  return 'College name cannot contain numbers';
+                }
+                return null;
+              },
+            ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _mobileController,
