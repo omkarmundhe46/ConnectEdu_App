@@ -9,6 +9,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:connectedu_app/dto/registration_request_dto.dart';
 import 'package:connectedu_app/dto/order_response.dart';
 import 'package:connectedu_app/dto/payment_verification_request.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:razorpay_flutter/razorpay_flutter.dart';
 
 class RegistrationFormScreen extends StatefulWidget {
@@ -35,7 +36,7 @@ class _RegistrationFormScreenState extends State<RegistrationFormScreen> {
 
   late Razorpay _razorpay;
 
-  static const String _razorpayKey = 'rzp_test_R65VA9avsIM02o';
+  final String _razorpayKey = dotenv.env['RAZORPAY_KEY'] ?? 'KEY_NOT_FOUND';
 
   @override
   void initState() {

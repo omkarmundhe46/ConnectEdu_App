@@ -116,7 +116,10 @@ class _LoginScreenState extends State<LoginScreen> {
             } else {
               // Show a generic login error
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(content: Text(error), backgroundColor: Colors.red),
+                const SnackBar(
+                    content: Text('Login unsuccessful. Please check your email and password.'),
+                    backgroundColor: Colors.red
+                ),
               );
             }
           }

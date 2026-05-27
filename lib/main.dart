@@ -3,6 +3,7 @@ import 'package:app_links/app_links.dart';
 import 'package:connectedu_app/bloc/auth_bloc.dart';
 import 'package:connectedu_app/bloc/home_bloc.dart';
 import 'package:connectedu_app/bloc/theme_cubit.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart'; // <-- Used here
 import 'package:connectedu_app/repositories/analytics_repository.dart';
 import 'package:connectedu_app/repositories/auth_repository.dart';
 import 'package:connectedu_app/repositories/banner_repository.dart';
@@ -21,9 +22,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
-void main() {
+// --- 1. MAKE MAIN ASYNC ---
+Future<void> main() async {
+  // --- 2. ENSURE FLUTTER BINDINGS ARE INITIALIZED ---
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // --- 3. LOAD THE .ENV FILE ---
+  await dotenv.load(fileName: ".env");
+
   final SecureStorageService secureStorageService = SecureStorageService();
-  final ApiService apiService = ApiService(secureStorageService); // Pass storage service
+  final ApiService apiService = ApiService(secureStorageService);
   final AuthRepository authRepository = AuthRepository(apiService, secureStorageService);
   final ClubRepository clubRepository = ClubRepository(apiService);
   final EventRepository eventRepository = EventRepository(apiService);
@@ -108,12 +116,9 @@ class _MyAppState extends State<MyApp> {
     debugPrint('Received deep link: $uri');
 
     if (uri.scheme == 'connectedu' && uri.host == 'login') {
-
       final token = uri.queryParameters['token'];
       if (token != null) {
-        debugPrint(
-            'Extracted token from deep link. Dispatching LoggedInWithToken.');
-
+        debugPrint('Extracted token from deep link. Dispatching LoggedInWithToken.');
         context.read<AuthBloc>().add(LoggedInWithToken(token: token));
       } else {
         debugPrint('Deep link did not contain a token.');
@@ -129,7 +134,7 @@ class _MyAppState extends State<MyApp> {
           title: 'ConnectEdu',
           theme: AppTheme.lightTheme,
           darkTheme: AppTheme.darkTheme,
-          themeMode: themeMode, // 4. Use the dynamic theme mode
+          themeMode: themeMode,
           debugShowCheckedModeBanner: false,
           home: BlocBuilder<AuthBloc, AuthState>(
             builder: (context, state) {
